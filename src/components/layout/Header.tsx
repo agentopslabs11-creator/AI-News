@@ -91,20 +91,20 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       </div>
 
-      {/* Main Masthead Banner */}
-      <div className="w-full px-4 sm:px-8 py-5 flex items-center justify-between gap-6">
+      {/* Main Masthead Banner - Centered in Middle like The Times of India */}
+      <div className="w-full px-4 sm:px-8 py-4 sm:py-6 relative flex items-center justify-center">
         {/* Mobile menu trigger */}
         <button
           onClick={onToggleMobileNav}
-          className="lg:hidden p-2 rounded-lg border border-brand-border text-brand-charcoal hover:bg-gray-50 transition-colors"
+          className="lg:hidden absolute left-4 sm:left-8 top-1/2 -translate-y-1/2 p-2 rounded-lg border border-brand-border text-brand-charcoal hover:bg-gray-50 transition-colors z-10"
           aria-label="Toggle navigation drawer"
         >
           {mobileNavOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
         </button>
 
-        {/* Brand on Left Side with Date below logo */}
-        <div className="flex-1 flex justify-start items-center py-2">
-          <RiseShineLogo size="md" layout="vertical" align="left" showDate={true} />
+        {/* Brand in Middle with Date below logo, inspired by The Times of India referral */}
+        <div className="flex justify-center items-center py-1">
+          <RiseShineLogo size="md" layout="middle-lockup" showDate={true} />
         </div>
       </div>
     </header>
