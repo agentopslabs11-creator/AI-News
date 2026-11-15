@@ -83,6 +83,11 @@ async def on_startup():
     except Exception as e:
         print(f"Startup database check: {e}")
 
+@app.get("/", tags=["Health"])
+@app.get("/api", tags=["Health"])
+def root_api():
+    return {"status": "online", "message": "Rise 'n' Shine API", "database": "postgresql"}
+
 @app.get("/health", tags=["Health"])
 @app.get("/api/health", tags=["Health"])
 async def health_check():
