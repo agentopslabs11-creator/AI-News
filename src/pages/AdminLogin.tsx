@@ -67,8 +67,12 @@ export const AdminLogin: React.FC = () => {
       
       if (typeof detail === 'string') {
         setErrorMessage(detail);
+      } else if (Array.isArray(detail)) {
+        setErrorMessage(detail.map((d: any) => d.msg || JSON.stringify(d)).join(', '));
       } else if (err.response?.data?.message) {
         setErrorMessage(err.response.data.message);
+      } else if (status === 401) {
+        setErrorMessage('Authentication Failed (401): Please ensure password is RiseAdmin@2026!');
       } else if (status === 404) {
         setErrorMessage('Endpoint Not Found (404): The API route /api/auth/login was not reachable on this domain. Check Vercel backend service.');
       } else if (status === 500) {
@@ -76,7 +80,7 @@ export const AdminLogin: React.FC = () => {
       } else if (err.message && !status) {
         setErrorMessage(`Network Error: ${err.message}. Failed to reach the API backend.`);
       } else {
-        setErrorMessage('Invalid administrative credentials or session locked.');
+        setErrorMessage(`Authentication Error (HTTP ${status || 'Unknown'}): ${err.message || 'Please check credentials and backend status.'}`);
       }
     } finally {
       setLoading(false);

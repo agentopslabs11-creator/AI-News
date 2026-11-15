@@ -74,6 +74,22 @@ for r in routers:
     app.include_router(r, prefix="/api")
     app.include_router(r)
 
+@app.on_event("startup")
+async def on_startup():
+    """Ensure database schema is ready and seed fixtures exist on startup."""
+    try:
+        from app.core.database import Base, engine, SessionLocal
+        Base.metadata.create_all(bind=engine)
+        db = SessionLocal()
+        from app.models.admin import Admin
+        from app.models.newspaper import NewspaperEdition
+        if db.query(Admin).count() == 0 or db.query(NewspaperEdition).count() == 0:
+            import seed_data
+            seed_data.seed_database()
+        db.close()
+    except Exception as e:
+        print(f"Startup database check: {e}")
+
 @app.get("/health", tags=["Health"])
 @app.get("/api/health", tags=["Health"])
 async def health_check():
@@ -84,12 +100,21 @@ async def health_check():
     error_detail = None
     try:
         from sqlalchemy import text
+        from app.core.database import Base, engine, SessionLocal
+        # Ensure schema exists
+        Base.metadata.create_all(bind=engine)
         db = SessionLocal()
         with engine.connect() as conn:
             conn.execute(text("SELECT 1"))
         db_type = "postgresql" if "postgresql" in str(engine.url) else "sqlite"
         from app.models.admin import Admin
+        from app.models.newspaper import NewspaperEdition
         admin_count = db.query(Admin).count()
+        # Auto-seed if database is empty
+        if admin_count == 0 or db.query(NewspaperEdition).count() == 0:
+            import seed_data
+            seed_data.seed_database()
+            admin_count = db.query(Admin).count()
         db_connected = True
         db.close()
     except Exception as e:
