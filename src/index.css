@@ -25,7 +25,13 @@
 .animate-marquee {
   display: inline-flex;
   white-space: nowrap;
-  animation: marquee 35s linear infinite;
+  animation: marquee 45s linear infinite;
+}
+
+.animate-marquee-slow {
+  display: inline-flex;
+  white-space: nowrap;
+  animation: marquee 85s linear infinite;
 }
 
 .hover\:pause-animation:hover {

@@ -1,6 +1,4 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
-import { Zap } from 'lucide-react';
 import { Article } from '../../types';
 
 interface TickerProps {
@@ -15,46 +13,32 @@ export const BreakingNewsTicker: React.FC<TickerProps> = ({ items, onArticleClic
   const displayItems = items.length < 6 ? [...items, ...items, ...items, ...items] : [...items, ...items];
 
   return (
-    <div className="w-full bg-white border-b border-brand-border py-2 px-4 sm:px-8 overflow-hidden select-none">
-      <div className="w-full flex items-center gap-3">
-        {/* Urgent Indicator */}
-        <div className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1 rounded bg-brand-yellow border border-amber-300 text-brand-charcoal text-[11px] font-black uppercase tracking-wider shadow-sm">
-          <Zap className="w-3.5 h-3.5 fill-brand-charcoal animate-pulse" />
-          <span>Breaking News</span>
+    <div className="w-full bg-[#fbfbf9] border-y border-brand-border py-1.5 px-4 sm:px-8 overflow-hidden select-none">
+      <div className="w-full flex items-center gap-3 relative">
+        {/* Fixed LIVE WIRE Badge as featured in the broadsheet HTML */}
+        <div className="flex-shrink-0 z-10 px-3 py-1 bg-[#b3261e] text-white text-[11px] font-black tracking-[0.14em] uppercase shadow-xs flex items-center gap-1.5 rounded-xs select-none">
+          <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+          <span>LIVE WIRE</span>
         </div>
 
-        {/* Ticker Items - Scrolling ONLY our submitted newspaper headlines */}
+        {/* Ticker Items - Scrolling our submitted newspaper headlines slowly and continuously */}
         <div className="flex-1 overflow-hidden relative whitespace-nowrap">
-          <div className="inline-flex gap-8 animate-marquee hover:pause-animation">
+          <div className="inline-flex items-center gap-4 animate-marquee-slow hover:pause-animation">
             {displayItems.map((item, index) => {
               const uniqueKey = `${item.id}-${index}`;
-              if (onArticleClick) {
-                return (
-                  <button
-                    key={uniqueKey}
-                    onClick={() => onArticleClick(item)}
-                    className="inline-flex items-center gap-2 text-xs font-semibold text-brand-charcoal hover:text-brand-blue transition-colors group cursor-pointer text-left"
-                  >
-                    <span className="w-1.5 h-1.5 rounded-full bg-brand-blue group-hover:scale-125 transition-transform" />
-                    <span className="text-[10px] uppercase font-bold text-brand-muted">
-                      [{item.language ? item.language.toUpperCase() : 'EN'}]
-                    </span>
-                    <span className="font-medium group-hover:underline">{item.title}</span>
-                  </button>
-                );
-              }
               return (
-                <Link
-                  key={uniqueKey}
-                  to={`/latest-news?slug=${item.slug}`}
-                  className="inline-flex items-center gap-2 text-xs font-semibold text-brand-charcoal hover:text-brand-blue transition-colors group"
-                >
-                  <span className="w-1.5 h-1.5 rounded-full bg-brand-blue group-hover:scale-125 transition-transform" />
-                  <span className="text-[10px] uppercase font-bold text-brand-muted">
-                    [{item.language ? item.language.toUpperCase() : 'EN'}]
+                <React.Fragment key={uniqueKey}>
+                  <button
+                    onClick={() => onArticleClick?.(item)}
+                    className="inline-flex items-center text-xs font-semibold text-brand-charcoal hover:text-brand-blue transition-colors group cursor-pointer text-left py-0.5"
+                    title={`Read "${item.title}"`}
+                  >
+                    <span className="font-medium group-hover:underline text-[13px]">{item.title}</span>
+                  </button>
+                  <span className="text-[#b3261e] font-serif text-xs font-black select-none opacity-80">
+                    ◆
                   </span>
-                  <span className="font-medium group-hover:underline">{item.title}</span>
-                </Link>
+                </React.Fragment>
               );
             })}
           </div>
@@ -63,3 +47,5 @@ export const BreakingNewsTicker: React.FC<TickerProps> = ({ items, onArticleClic
     </div>
   );
 };
+
+export default BreakingNewsTicker;
