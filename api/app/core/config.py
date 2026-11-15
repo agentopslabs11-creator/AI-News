@@ -3,18 +3,20 @@ from typing import List, Union
 from pydantic_settings import BaseSettings
 from pydantic import Field, field_validator
 
+NEON_DEFAULT_URL = "postgresql+psycopg2://neondb_owner:npg_BHucyAJ6TOq7@ep-solitary-surf-bdld8lf9-pooler.c-8.us-east-2.aws.neon.tech/neondb?sslmode=require"
+
 class Settings(BaseSettings):
     PROJECT_NAME: str = "Rise ’n’ Shine – The AI Newspaper"
     API_V1_STR: str = "/api"
     
-    # Database
+    # Database - defaults to production Neon PostgreSQL so Vercel never crashes on read-only sqlite
     DATABASE_URL: str = Field(
         default_factory=lambda: (
             os.environ.get("DATABASE_URL")
             or os.environ.get("POSTGRES_URL")
             or os.environ.get("POSTGRES_PRISMA_URL")
             or os.environ.get("POSTGRES_URL_NON_POOLING")
-            or "sqlite:///./risenshine.db"
+            or NEON_DEFAULT_URL
         ),
         description="Neon PostgreSQL connection string or SQLite local fallback"
     )
@@ -42,6 +44,8 @@ class Settings(BaseSettings):
         "http://127.0.0.1:5173",
         "http://localhost:3000",
         "http://localhost:4173",
+        "https://rise-n-shine.vercel.app",
+        "*"
     ]
     
     # Default initial admin
@@ -52,13 +56,13 @@ class Settings(BaseSettings):
     @field_validator("DATABASE_URL", mode="before")
     @classmethod
     def assemble_db_connection(cls, v: Union[str, None]) -> str:
-        if not v:
+        if not v or v.strip() == "" or v == "sqlite:///./risenshine.db":
             v = (
                 os.environ.get("DATABASE_URL")
                 or os.environ.get("POSTGRES_URL")
                 or os.environ.get("POSTGRES_PRISMA_URL")
                 or os.environ.get("POSTGRES_URL_NON_POOLING")
-                or "sqlite:///./risenshine.db"
+                or NEON_DEFAULT_URL
             )
         # Strip any quotes that might be accidentally pasted in Vercel UI
         v = v.strip("\"' ")

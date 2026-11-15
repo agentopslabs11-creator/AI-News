@@ -1,8 +1,11 @@
-from contextlib import asynccontextmanager
-from fastapi import FastAPI
+import os
+import sys
+import traceback
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
-from app.core.database import Base, engine, SessionLocal
+from app.core.database import engine, SessionLocal
 import app.models  # Ensures all SQLAlchemy models are registered
 from app.routers import (
     auth_router,
@@ -16,12 +19,6 @@ from app.routers import (
     advertisements_router,
 )
 
-# Create database tables
-try:
-    Base.metadata.create_all(bind=engine)
-except Exception as e:
-    print(f"Table creation warning: {e}")
-
 app = FastAPI(
     title=settings.PROJECT_NAME,
     description="Backend API for Rise ’n’ Shine – The AI Newspaper",
@@ -30,6 +27,20 @@ app = FastAPI(
     redoc_url="/api/redoc",
     openapi_url="/api/openapi.json"
 )
+
+# Global exception handler so unexpected errors are returned cleanly as JSON with details
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    error_trace = traceback.format_exc()
+    print(f"Unhandled server error on {request.url.path}: {exc}\n{error_trace}")
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": f"Internal Server Error: {str(exc)}",
+            "path": request.url.path,
+            "type": type(exc).__name__
+        }
+    )
 
 # CORS configuration
 app.add_middleware(
@@ -63,64 +74,56 @@ for r in routers:
     app.include_router(r, prefix="/api")
     app.include_router(r)
 
-@app.on_event("startup")
-def bootstrap_database():
-    """Ensures database has initial administrators ready upon deployment."""
-    try:
-        from app.models.admin import Admin
-        from app.core.security import get_password_hash
-        db = SessionLocal()
-        
-        # 1. Default system admin
-        default_admin = db.query(Admin).filter(Admin.email == settings.INITIAL_ADMIN_EMAIL.lower()).first()
-        if not default_admin:
-            db.add(Admin(
-                name=settings.INITIAL_ADMIN_NAME,
-                email=settings.INITIAL_ADMIN_EMAIL.lower(),
-                password_hash=get_password_hash(settings.INITIAL_ADMIN_PASSWORD),
-                role="superadmin",
-                is_active=True
-            ))
-            db.commit()
-
-        # 2. Staff admin: agentopslabs@gmail.com
-        ops_admin = db.query(Admin).filter(Admin.email == "agentopslabs@gmail.com").first()
-        if not ops_admin:
-            db.add(Admin(
-                name="Chief Editor",
-                email="agentopslabs@gmail.com",
-                password_hash=get_password_hash("RiseAdmin@2026!"),
-                role="superadmin",
-                is_active=True
-            ))
-            db.commit()
-        db.close()
-    except Exception as e:
-        print(f"Database bootstrap notice: {e}")
-
 @app.get("/health", tags=["Health"])
 @app.get("/api/health", tags=["Health"])
 async def health_check():
+    """Live diagnostic endpoint verifying database connectivity and admin accounts."""
     db_connected = False
     db_type = "unknown"
     admin_count = 0
+    error_detail = None
     try:
+        from sqlalchemy import text
         db = SessionLocal()
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
         db_type = "postgresql" if "postgresql" in str(engine.url) else "sqlite"
         from app.models.admin import Admin
         admin_count = db.query(Admin).count()
         db_connected = True
         db.close()
     except Exception as e:
-        db_type = f"error: {str(e)[:100]}"
+        error_detail = str(e)
+        db_type = f"error: {str(e)[:120]}"
 
     return {
         "status": "online",
         "platform": settings.PROJECT_NAME,
         "database_connected": db_connected,
         "database_type": db_type,
-        "admin_accounts_ready": admin_count
+        "admin_accounts_ready": admin_count,
+        "error": error_detail
     }
+
+@app.get("/debug", tags=["Health"])
+@app.get("/api/debug", tags=["Health"])
+async def debug_endpoint():
+    """Detailed diagnostic endpoint for troubleshooting Vercel deployment."""
+    report = {
+        "python_version": sys.version,
+        "database_url_prefix": str(settings.DATABASE_URL)[:35] + "...",
+        "is_vercel": bool(os.environ.get("VERCEL")),
+        "env_keys": [k for k in os.environ.keys() if any(w in k for w in ["DATA", "POSTGRES", "VERCEL", "SECRET"])]
+    }
+    try:
+        from sqlalchemy import text
+        with engine.connect() as conn:
+            val = conn.execute(text("SELECT 1")).scalar()
+            report["db_ping"] = "success" if val == 1 else "unexpected"
+    except Exception as e:
+        report["db_ping_error"] = str(e)
+        report["traceback"] = traceback.format_exc()
+    return report
 
 @app.get("/", tags=["Root"])
 async def root():
