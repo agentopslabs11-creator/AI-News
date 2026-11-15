@@ -126,26 +126,39 @@ async def get_combined_latest_news(
 @router.get("/breaking", response_model=List[ArticleListItem])
 async def get_breaking_news(
     language: Optional[str] = Query(None, pattern="^(en|te|hi)$"),
-    limit: int = Query(10, ge=1, le=20),
+    limit: int = Query(30, ge=1, le=50),
     db: Session = Depends(get_db)
 ):
-    """Returns breaking news headlines for the top horizontal breaking ticker."""
-    query = db.query(Article).filter(
+    """
+    Returns breaking news headlines for the top horizontal breaking ticker.
+    Strictly uses headlines extracted directly from our submitted newspaper edition HTML.
+    Never returns outside or stale data.
+    """
+    target_lang = language or "en"
+
+    # 1. Look up the latest published newspaper edition for this language
+    latest_edition = db.query(NewspaperEdition).filter(
+        NewspaperEdition.status == "published",
+        NewspaperEdition.language == target_lang
+    ).order_by(desc(NewspaperEdition.publication_date), desc(NewspaperEdition.id)).first()
+
+    if latest_edition:
+        # Retrieve all articles extracted directly from this submitted HTML broadsheet
+        edition_articles = db.query(Article).filter(
+            Article.edition_id == latest_edition.id,
+            Article.status == "published"
+        ).order_by(Article.id.asc()).limit(limit).all()
+
+        if edition_articles:
+            return edition_articles
+
+    # 2. Fallback strictly to published articles of this language from our editions
+    articles = db.query(Article).filter(
         Article.status == "published",
-        Article.is_breaking == True
-    )
-    if language:
-        query = query.filter(Article.language == language)
-    
-    breaking = query.order_by(desc(Article.created_at)).limit(limit).all()
-    # Fallback to recent articles if no explicit breaking stories
-    if not breaking:
-        subquery = db.query(Article).filter(Article.status == "published")
-        if language:
-            subquery = subquery.filter(Article.language == language)
-        breaking = subquery.order_by(desc(Article.created_at)).limit(5).all()
-        
-    return breaking
+        Article.language == target_lang
+    ).order_by(desc(Article.id)).limit(limit).all()
+
+    return articles
 
 @router.get("/articles", response_model=List[ArticleListItem])
 async def get_published_articles(

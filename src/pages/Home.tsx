@@ -69,8 +69,18 @@ export const Home: React.FC = () => {
 
   const [loading, setLoading] = useState(!cachedAds && !cachedVideo);
 
+  // Cached Breaking News strictly from submitted newspaper broadsheet
+  const cachedBreakingNews: Article[] = (() => {
+    try {
+      const saved = localStorage.getItem('rns_cache_breaking_news');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  })();
+
   // Data states
-  const [breakingNews, setBreakingNews] = useState<Article[]>([]);
+  const [breakingNews, setBreakingNews] = useState<Article[]>(cachedBreakingNews);
   const [videos, setVideos] = useState<VideoItem[]>([]);
   const [activeVideo, setActiveVideo] = useState<VideoItem>(cachedVideo || defaultBroadcastVideo);
 
@@ -97,13 +107,18 @@ export const Home: React.FC = () => {
     async function loadHomepage() {
       try {
         const [breaking, adsData, videoList, edition] = await Promise.allSettled([
-          newspaperService.getBreakingNews(),
+          newspaperService.getBreakingNews('en'),
           newspaperService.getAdvertisements(),
           newspaperService.getVideos('en', 6),
           newspaperService.getLatestEdition('en'),
         ]);
 
-        if (breaking.status === 'fulfilled') setBreakingNews(breaking.value);
+        if (breaking.status === 'fulfilled' && breaking.value.length > 0) {
+          setBreakingNews(breaking.value);
+          try {
+            localStorage.setItem('rns_cache_breaking_news', JSON.stringify(breaking.value));
+          } catch {}
+        }
         if (adsData.status === 'fulfilled') {
           const l = adsData.value.left || [];
           const r = adsData.value.right || [];

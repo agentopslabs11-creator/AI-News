@@ -278,7 +278,7 @@ def extract_articles_from_edition(
         base_slug = _slugify(f"{title}-{date_str}")
         slug = _unique_slug(base_slug, db, used_in_batch)
 
-        is_breaking = (idx == 0)
+        is_breaking = True  # Every headline extracted from our submitted newspaper HTML is a headline for breaking news
         is_featured = (idx < 4)
 
         article = Article(

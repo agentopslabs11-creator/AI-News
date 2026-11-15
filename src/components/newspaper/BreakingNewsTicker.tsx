@@ -11,6 +11,9 @@ interface TickerProps {
 export const BreakingNewsTicker: React.FC<TickerProps> = ({ items, onArticleClick }) => {
   if (!items || items.length === 0) return null;
 
+  // Duplicate items to ensure a seamless, endless scrolling marquee loop
+  const displayItems = items.length < 6 ? [...items, ...items, ...items, ...items] : [...items, ...items];
+
   return (
     <div className="w-full bg-white border-b border-brand-border py-2 px-4 sm:px-8 overflow-hidden select-none">
       <div className="w-full flex items-center gap-3">
@@ -20,20 +23,21 @@ export const BreakingNewsTicker: React.FC<TickerProps> = ({ items, onArticleClic
           <span>Breaking News</span>
         </div>
 
-        {/* Ticker Items (Marquee or Horizontal Carousel) */}
+        {/* Ticker Items - Scrolling ONLY our submitted newspaper headlines */}
         <div className="flex-1 overflow-hidden relative whitespace-nowrap">
           <div className="inline-flex gap-8 animate-marquee hover:pause-animation">
-            {items.map((item) => {
+            {displayItems.map((item, index) => {
+              const uniqueKey = `${item.id}-${index}`;
               if (onArticleClick) {
                 return (
                   <button
-                    key={item.id}
+                    key={uniqueKey}
                     onClick={() => onArticleClick(item)}
                     className="inline-flex items-center gap-2 text-xs font-semibold text-brand-charcoal hover:text-brand-blue transition-colors group cursor-pointer text-left"
                   >
                     <span className="w-1.5 h-1.5 rounded-full bg-brand-blue group-hover:scale-125 transition-transform" />
                     <span className="text-[10px] uppercase font-bold text-brand-muted">
-                      [{item.language.toUpperCase()}]
+                      [{item.language ? item.language.toUpperCase() : 'EN'}]
                     </span>
                     <span className="font-medium group-hover:underline">{item.title}</span>
                   </button>
@@ -41,13 +45,13 @@ export const BreakingNewsTicker: React.FC<TickerProps> = ({ items, onArticleClic
               }
               return (
                 <Link
-                  key={item.id}
+                  key={uniqueKey}
                   to={`/latest-news?slug=${item.slug}`}
                   className="inline-flex items-center gap-2 text-xs font-semibold text-brand-charcoal hover:text-brand-blue transition-colors group"
                 >
                   <span className="w-1.5 h-1.5 rounded-full bg-brand-blue group-hover:scale-125 transition-transform" />
                   <span className="text-[10px] uppercase font-bold text-brand-muted">
-                    [{item.language.toUpperCase()}]
+                    [{item.language ? item.language.toUpperCase() : 'EN'}]
                   </span>
                   <span className="font-medium group-hover:underline">{item.title}</span>
                 </Link>
