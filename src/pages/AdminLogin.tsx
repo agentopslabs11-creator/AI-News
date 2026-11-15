@@ -1,17 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { Eye, EyeOff, Lock, Mail, ShieldCheck, ArrowRight, AlertCircle } from 'lucide-react';
-import { RiseShineLogo } from '../components/common/RiseShineLogo';
+import { ShieldCheck, Lock, Mail, AlertCircle, ArrowRight, Eye, EyeOff, Activity } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import { RiseShineLogo } from '../components/common/RiseShineLogo';
+import { apiClient } from '../services/api';
 
 export const AdminLogin: React.FC = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
-  const queryParams = new URLSearchParams(location.search);
-  const sessionExpired = queryParams.get('session_expired');
-  const redirectUrl = queryParams.get('redirect') || '/admin';
+  const redirectUrl = (location.state as any)?.from?.pathname || '/admin';
+  const sessionExpired = (location.state as any)?.sessionExpired;
 
   const [email, setEmail] = useState('admin@risenshine.com');
   const [password, setPassword] = useState('RiseAdmin@2026!');
@@ -19,6 +19,29 @@ export const AdminLogin: React.FC = () => {
   const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Live Backend Connection Diagnostics
+  const [apiHealth, setApiHealth] = useState<{
+    status?: string;
+    database_connected?: boolean;
+    database_type?: string;
+    admin_accounts_ready?: number;
+    error?: string;
+  } | null>(null);
+
+  useEffect(() => {
+    apiClient
+      .get('/health')
+      .then((res) => {
+        setApiHealth(res.data);
+      })
+      .catch((err) => {
+        const status = err.response?.status;
+        setApiHealth({
+          error: status ? `HTTP ${status}` : (err.message || 'Cannot reach API backend')
+        });
+      });
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,9 +61,20 @@ export const AdminLogin: React.FC = () => {
       });
       navigate(redirectUrl, { replace: true });
     } catch (err: any) {
+      console.error('Login error detail:', err);
+      const status = err.response?.status;
       const detail = err.response?.data?.detail;
+      
       if (typeof detail === 'string') {
         setErrorMessage(detail);
+      } else if (err.response?.data?.message) {
+        setErrorMessage(err.response.data.message);
+      } else if (status === 404) {
+        setErrorMessage('Endpoint Not Found (404): The API route /api/auth/login was not reachable on this domain. Check Vercel backend service.');
+      } else if (status === 500) {
+        setErrorMessage('Server Error (500): Database connection error on Vercel backend. Check Vercel logs and Neon database connection.');
+      } else if (err.message && !status) {
+        setErrorMessage(`Network Error: ${err.message}. Failed to reach the API backend.`);
       } else {
         setErrorMessage('Invalid administrative credentials or session locked.');
       }
@@ -66,7 +100,7 @@ export const AdminLogin: React.FC = () => {
       <div className="flex-1 flex items-center justify-center p-4 sm:p-8">
         <div className="w-full max-w-md bg-white border border-brand-border rounded-2xl p-8 sm:p-10 shadow-editorial">
           {/* Header */}
-          <div className="text-center space-y-2 mb-8">
+          <div className="text-center space-y-2 mb-6">
             <div className="w-12 h-12 rounded-xl bg-blue-50 text-brand-blue border border-blue-100 flex items-center justify-center mx-auto mb-3">
               <ShieldCheck className="w-6 h-6" />
             </div>
@@ -76,6 +110,26 @@ export const AdminLogin: React.FC = () => {
             <p className="text-xs text-brand-muted">
               Secure authentication for authorized newspaper editorial administrators.
             </p>
+          </div>
+
+          {/* Live Backend Connection Indicator */}
+          <div className="mb-6 p-2.5 rounded-lg border text-xs font-mono flex items-center justify-between gap-2 bg-gray-50/80 border-gray-200">
+            <span className="text-gray-500 font-sans font-bold text-[11px] uppercase tracking-wider flex items-center gap-1.5">
+              <Activity className="w-3.5 h-3.5 text-brand-blue" />
+              <span>Backend API:</span>
+            </span>
+            {apiHealth === null ? (
+              <span className="text-gray-400">Pinging /api/health...</span>
+            ) : apiHealth.error ? (
+              <span className="text-red-600 font-bold">Offline ({apiHealth.error})</span>
+            ) : apiHealth.database_connected ? (
+              <span className="text-emerald-700 font-bold flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse inline-block" />
+                <span>Connected ({apiHealth.database_type || 'PostgreSQL'})</span>
+              </span>
+            ) : (
+              <span className="text-amber-700 font-bold">DB Disconnected</span>
+            )}
           </div>
 
           {/* Session Expired Alert */}
@@ -90,7 +144,10 @@ export const AdminLogin: React.FC = () => {
           {errorMessage && (
             <div className="mb-6 p-3 rounded-lg bg-red-50 border border-red-200 text-xs text-red-700 flex items-start gap-2">
               <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-              <span>{errorMessage}</span>
+              <div className="flex-1">
+                <div className="font-bold">Authentication Notice:</div>
+                <div className="mt-0.5">{errorMessage}</div>
+              </div>
             </div>
           )}
 
@@ -142,6 +199,31 @@ export const AdminLogin: React.FC = () => {
               </div>
             </div>
 
+            {/* Quick Fill Buttons */}
+            <div className="flex items-center gap-2 text-[11px] text-gray-500">
+              <span className="font-semibold">Quick select:</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setEmail('agentopslabs@gmail.com');
+                  setPassword('RiseAdmin@2026!');
+                }}
+                className="px-2 py-0.5 rounded bg-gray-100 hover:bg-gray-200 text-brand-charcoal font-medium border border-gray-200 transition-colors"
+              >
+                agentopslabs
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setEmail('admin@risenshine.com');
+                  setPassword('RiseAdmin@2026!');
+                }}
+                className="px-2 py-0.5 rounded bg-gray-100 hover:bg-gray-200 text-brand-charcoal font-medium border border-gray-200 transition-colors"
+              >
+                admin
+              </button>
+            </div>
+
             {/* Remember session checkbox */}
             <div className="flex items-center justify-between text-xs pt-1">
               <label className="flex items-center gap-2 cursor-pointer select-none">
@@ -177,9 +259,9 @@ export const AdminLogin: React.FC = () => {
           </form>
 
           {/* Security Note */}
-          <div className="mt-8 pt-6 border-t border-brand-border text-center text-[11px] text-brand-muted space-y-1">
+          <div className="mt-6 pt-5 border-t border-brand-border text-center text-[11px] text-brand-muted space-y-1">
             <p>Authorized access only. Public registration is permanently disabled.</p>
-            <p className="text-[10px] text-gray-400">Default: admin@risenshine.com / RiseAdmin@2026!</p>
+            <p className="text-[10px] text-gray-500 font-mono">Password: RiseAdmin@2026!</p>
           </div>
         </div>
       </div>
