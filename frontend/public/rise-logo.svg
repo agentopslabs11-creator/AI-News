@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 120" width="100%" height="100%">
+  <defs>
+    <linearGradient id="sunGrad" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#FFD21A" />
+      <stop offset="100%" stop-color="#C6FD04" />
+    </linearGradient>
+    <linearGradient id="rayGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#C6FD04" />
+      <stop offset="100%" stop-color="#1719D9" />
+    </linearGradient>
+  </defs>
+
+  <!-- Sunrise Emblem -->
+  <g transform="translate(10, 10)">
+    <!-- Aura Rays -->
+    <path d="M50,15 L50,0" stroke="#FFD21A" stroke-width="4.5" stroke-linecap="round" />
+    <path d="M26,24 L14,12" stroke="#C6FD04" stroke-width="4.5" stroke-linecap="round" />
+    <path d="M74,24 L86,12" stroke="#C6FD04" stroke-width="4.5" stroke-linecap="round" />
+    <path d="M15,50 L0,50" stroke="#FFD21A" stroke-width="4.5" stroke-linecap="round" />
+    <path d="M85,50 L100,50" stroke="#FFD21A" stroke-width="4.5" stroke-linecap="round" />
+    <path d="M25,75 L13,87" stroke="#1719D9" stroke-width="4" stroke-linecap="round" />
+    <path d="M75,75 L87,87" stroke="#1719D9" stroke-width="4" stroke-linecap="round" />
+
+    <!-- Radiant Sun Core -->
+    <circle cx="50" cy="50" r="28" fill="url(#sunGrad)" />
+    
+    <!-- Editorial Digital Aperture Lines -->
+    <path d="M36,50 Q50,30 64,50 Q50,70 36,50 Z" fill="#1719D9" opacity="0.9" />
+    <circle cx="50" cy="50" r="6.5" fill="#FFFFFF" />
+    
+    <!-- Morning Horizon Arc -->
+    <path d="M20,68 C30,78 70,78 80,68" fill="none" stroke="#C6FD04" stroke-width="4" stroke-linecap="round" />
+  </g>
+
+  <!-- Editorial Brand Typography -->
+  <g transform="translate(125, 20)">
+    <!-- Main Title -->
+    <text x="0" y="46" font-family="'Playfair Display', Georgia, serif" font-size="44" font-weight="900" fill="#1719D9" letter-spacing="1.5">
+      RISE <tspan fill="#FFD21A" font-weight="800">’N’</tspan> SHINE
+    </text>
+
+    <!-- Subtitle with Lime Green accent dot -->
+    <text x="2" y="74" font-family="'Inter', sans-serif" font-size="13.5" font-weight="800" fill="#242424" letter-spacing="4.5">
+      THE AI NEWSPAPER
+    </text>
+    <circle cx="216" cy="70" r="4.5" fill="#C6FD04" />
+    <text x="228" y="74" font-family="'Inter', sans-serif" font-size="11" font-weight="700" fill="#747474" letter-spacing="2">
+      EST. 2026
+    </text>
+  </g>
+</svg>

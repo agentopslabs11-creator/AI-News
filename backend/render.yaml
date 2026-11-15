@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: rise-n-shine-api
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: SECURE_COOKIE
+        value: "true"
+      - key: COOKIE_SAMESITE
+        value: "none"
+      - key: MAX_UPLOAD_SIZE_MB
+        value: "5"
