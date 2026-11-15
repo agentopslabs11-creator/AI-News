@@ -9,7 +9,13 @@ class Settings(BaseSettings):
     
     # Database
     DATABASE_URL: str = Field(
-        default="sqlite:///./risenshine.db",
+        default_factory=lambda: (
+            os.environ.get("DATABASE_URL")
+            or os.environ.get("POSTGRES_URL")
+            or os.environ.get("POSTGRES_PRISMA_URL")
+            or os.environ.get("POSTGRES_URL_NON_POOLING")
+            or "sqlite:///./risenshine.db"
+        ),
         description="Neon PostgreSQL connection string or SQLite local fallback"
     )
     
@@ -47,12 +53,24 @@ class Settings(BaseSettings):
     @classmethod
     def assemble_db_connection(cls, v: Union[str, None]) -> str:
         if not v:
-            return "sqlite:///./risenshine.db"
+            v = (
+                os.environ.get("DATABASE_URL")
+                or os.environ.get("POSTGRES_URL")
+                or os.environ.get("POSTGRES_PRISMA_URL")
+                or os.environ.get("POSTGRES_URL_NON_POOLING")
+                or "sqlite:///./risenshine.db"
+            )
+        # Strip any quotes that might be accidentally pasted in Vercel UI
+        v = v.strip("\"' ")
         # Neon and Render often provide 'postgres://' which SQLAlchemy 2.0 deprecates
         if v.startswith("postgres://"):
             v = v.replace("postgres://", "postgresql+psycopg2://", 1)
         elif v.startswith("postgresql://") and not v.startswith("postgresql+psycopg2://"):
             v = v.replace("postgresql://", "postgresql+psycopg2://", 1)
+        # Ensure sslmode=require is set for remote PostgreSQL
+        if "postgresql" in v and "sslmode" not in v:
+            delimiter = "&" if "?" in v else "?"
+            v = f"{v}{delimiter}sslmode=require"
         return v
 
     class Config:
