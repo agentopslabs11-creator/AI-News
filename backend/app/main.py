@@ -98,22 +98,30 @@ async def health_check():
     error_detail = None
     try:
         from sqlalchemy import text
-        from app.core.database import Base, engine, SessionLocal
-        # Ensure schema exists
-        Base.metadata.create_all(bind=engine)
-        db = SessionLocal()
+        from app.core.database import engine, SessionLocal
+        # Fast connection test
         with engine.connect() as conn:
             conn.execute(text("SELECT 1"))
         db_type = "postgresql" if "postgresql" in str(engine.url) else "sqlite"
+        db_connected = True
+
+        db = SessionLocal()
         from app.models.admin import Admin
         from app.models.newspaper import NewspaperEdition
-        admin_count = db.query(Admin).count()
-        # Auto-seed if database is empty
+        try:
+            admin_count = db.query(Admin).count()
+        except Exception:
+            # If tables are missing on cold start, initialize them
+            from app.core.database import Base
+            Base.metadata.create_all(bind=engine)
+            import seed_data
+            seed_data.seed_database()
+            admin_count = db.query(Admin).count()
+
         if admin_count == 0 or db.query(NewspaperEdition).count() == 0:
             import seed_data
             seed_data.seed_database()
             admin_count = db.query(Admin).count()
-        db_connected = True
         db.close()
     except Exception as e:
         error_detail = str(e)
@@ -121,6 +129,7 @@ async def health_check():
 
     return {
         "status": "online",
+        "api_status": "healthy",
         "platform": settings.PROJECT_NAME,
         "database_connected": db_connected,
         "database_type": db_type,

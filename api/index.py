@@ -8,5 +8,6 @@ if api_dir not in sys.path:
 
 from app.main import app
 
-# Vercel looks for the ASGI 'app' variable
-__all__ = ["app"]
+# Export both 'app' and 'handler' for Vercel Serverless ASGI runtime
+handler = app
+__all__ = ["app", "handler"]

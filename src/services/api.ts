@@ -8,9 +8,20 @@ function getCookie(name: string): string | null {
   return null;
 }
 
-const baseURL = import.meta.env.VITE_API_BASE_URL 
-  ? `${import.meta.env.VITE_API_BASE_URL}/api`
-  : '/api';
+// Robust API Base URL resolution for local and production deployment
+let rawBaseUrl = (import.meta.env.VITE_API_BASE_URL || '').trim();
+
+// In production on Vercel, force same-domain relative '/api' if localhost is specified
+if (import.meta.env.PROD && (rawBaseUrl.includes('localhost') || rawBaseUrl.includes('127.0.0.1'))) {
+  rawBaseUrl = '';
+}
+
+// Normalize base URL so it never has trailing slashes or duplicate /api
+let baseURL = '/api';
+if (rawBaseUrl) {
+  rawBaseUrl = rawBaseUrl.replace(/\/+$/, '');
+  baseURL = rawBaseUrl.endsWith('/api') ? rawBaseUrl : `${rawBaseUrl}/api`;
+}
 
 export const apiClient = axios.create({
   baseURL,
