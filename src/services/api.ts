@@ -8,24 +8,33 @@ function getCookie(name: string): string | null {
   return null;
 }
 
-// Robust API Base URL resolution for local and production deployment
-let rawBaseUrl = (import.meta.env.VITE_API_BASE_URL || '').trim();
+// 1. Resolve raw API URL from environment variables
+const rawEnvUrl = (
+  import.meta.env.VITE_API_URL || 
+  import.meta.env.VITE_API_BASE_URL || 
+  ''
+).trim();
 
-// In production on Vercel, force same-domain relative '/api' if localhost is specified
-if (import.meta.env.PROD && (rawBaseUrl.includes('localhost') || rawBaseUrl.includes('127.0.0.1'))) {
-  rawBaseUrl = '';
+// 2. Reject outdated/broken domains or localhost in production
+let resolvedOrigin = '';
+if (
+  rawEnvUrl &&
+  !rawEnvUrl.includes('backend-rho-drab-16') &&
+  !rawEnvUrl.includes('localhost') &&
+  !rawEnvUrl.includes('127.0.0.1')
+) {
+  resolvedOrigin = rawEnvUrl.replace(/\/+$/, '');
 }
 
-// Normalize base URL so it never has trailing slashes or duplicate /api
-let baseURL = '/api';
-if (rawBaseUrl) {
-  rawBaseUrl = rawBaseUrl.replace(/\/+$/, '');
-  baseURL = rawBaseUrl.endsWith('/api') ? rawBaseUrl : `${rawBaseUrl}/api`;
-}
+// 3. Guarantee clean API_BASE_URL on same origin without duplicate '/api/api'
+export const API_BASE_URL = resolvedOrigin
+  ? (resolvedOrigin.endsWith('/api') ? resolvedOrigin : `${resolvedOrigin}/api`)
+  : '/api';
 
 export const apiClient = axios.create({
-  baseURL,
+  baseURL: API_BASE_URL,
   withCredentials: true, // Crucial for HttpOnly session cookie
+  timeout: 12000,
   headers: {
     'Accept': 'application/json',
   }

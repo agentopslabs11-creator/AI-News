@@ -5,6 +5,15 @@ import { useAuth } from '../hooks/useAuth';
 import { RiseShineLogo } from '../components/common/RiseShineLogo';
 import { apiClient } from '../services/api';
 
+interface ApiHealthState {
+  status?: string;
+  api_status?: string;
+  database_connected?: boolean;
+  database_type?: string;
+  admin_accounts_ready?: number;
+  error?: string;
+}
+
 export const AdminLogin: React.FC = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -13,34 +22,47 @@ export const AdminLogin: React.FC = () => {
   const redirectUrl = (location.state as any)?.from?.pathname || '/admin';
   const sessionExpired = (location.state as any)?.sessionExpired;
 
-  const [email, setEmail] = useState('admin@risenshine.com');
-  const [password, setPassword] = useState('RiseAdmin@2026!');
+  const [email, setEmail] = useState('agentopslabs@gmail.com');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Live Backend Connection Diagnostics
-  const [apiHealth, setApiHealth] = useState<{
-    status?: string;
-    database_connected?: boolean;
-    database_type?: string;
-    admin_accounts_ready?: number;
-    error?: string;
-  } | null>(null);
+  // Live Backend & Database Diagnostics State
+  const [apiHealth, setApiHealth] = useState<ApiHealthState | null>(null);
 
   useEffect(() => {
+    let isCurrent = true;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
+
     apiClient
-      .get('/health')
+      .get<ApiHealthState>('/health', { signal: controller.signal })
       .then((res) => {
+        if (!isCurrent) return;
         setApiHealth(res.data);
       })
       .catch((err) => {
-        const status = err.response?.status;
-        setApiHealth({
-          error: status ? `HTTP ${status}` : (err.message || 'Cannot reach API backend')
-        });
+        if (!isCurrent) return;
+        if (err.name === 'CanceledError' || err.code === 'ERR_CANCELED') {
+          setApiHealth({ error: 'Health check timed out (8s)' });
+        } else {
+          const status = err.response?.status;
+          setApiHealth({
+            error: status ? `HTTP ${status}` : (err.message || 'Cannot reach API backend')
+          });
+        }
+      })
+      .finally(() => {
+        clearTimeout(timeoutId);
       });
+
+    return () => {
+      isCurrent = false;
+      controller.abort();
+      clearTimeout(timeoutId);
+    };
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -72,11 +94,11 @@ export const AdminLogin: React.FC = () => {
       } else if (err.response?.data?.message) {
         setErrorMessage(err.response.data.message);
       } else if (status === 401) {
-        setErrorMessage('Authentication Failed (401): Please ensure password is RiseAdmin@2026!');
+        setErrorMessage('Authentication Failed (401): Invalid administrator email or password.');
       } else if (status === 404) {
-        setErrorMessage('Endpoint Not Found (404): The API route /api/auth/login was not reachable on this domain. Check Vercel backend service.');
+        setErrorMessage('Endpoint Not Found (404): The API route /api/auth/login was not reachable on this domain.');
       } else if (status === 500) {
-        setErrorMessage('Server Error (500): Database connection error on Vercel backend. Check Vercel logs and Neon database connection.');
+        setErrorMessage('Server Error (500): Database connection error on Vercel backend.');
       } else if (err.message && !status) {
         setErrorMessage(`Network Error: ${err.message}. Failed to reach the API backend.`);
       } else {
@@ -116,23 +138,41 @@ export const AdminLogin: React.FC = () => {
             </p>
           </div>
 
-          {/* Live Backend Connection Indicator */}
-          <div className="mb-6 p-2.5 rounded-lg border text-xs font-mono flex items-center justify-between gap-2 bg-gray-50/80 border-gray-200">
-            <span className="text-gray-500 font-sans font-bold text-[11px] uppercase tracking-wider flex items-center gap-1.5">
-              <Activity className="w-3.5 h-3.5 text-brand-blue" />
-              <span>Backend API:</span>
-            </span>
-            {apiHealth === null ? (
-              <span className="text-gray-400">Pinging /api/health...</span>
-            ) : apiHealth.error ? (
-              <span className="text-red-600 font-bold">Offline ({apiHealth.error})</span>
-            ) : apiHealth.database_connected ? (
-              <span className="text-emerald-700 font-bold flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse inline-block" />
-                <span>Connected ({apiHealth.database_type || 'PostgreSQL'})</span>
+          {/* Live Backend & Database Connection Indicator */}
+          <div className="mb-6 p-2.5 rounded-lg border text-xs font-mono flex flex-col gap-1.5 bg-gray-50/80 border-gray-200">
+            <div className="flex items-center justify-between">
+              <span className="text-gray-500 font-sans font-bold text-[11px] uppercase tracking-wider flex items-center gap-1.5">
+                <Activity className="w-3.5 h-3.5 text-brand-blue" />
+                <span>Backend API:</span>
               </span>
-            ) : (
-              <span className="text-amber-700 font-bold">DB Disconnected</span>
+              {apiHealth === null ? (
+                <span className="text-gray-400">Pinging /api/health...</span>
+              ) : apiHealth.error ? (
+                <span className="text-red-600 font-bold">Offline ({apiHealth.error})</span>
+              ) : (apiHealth.api_status === 'healthy' || apiHealth.status === 'online') ? (
+                <span className="text-emerald-700 font-bold flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse inline-block" />
+                  <span>Online</span>
+                </span>
+              ) : (
+                <span className="text-amber-700 font-bold">Degraded</span>
+              )}
+            </div>
+
+            {apiHealth && !apiHealth.error && (
+              <div className="flex items-center justify-between pt-1 border-t border-gray-200/60">
+                <span className="text-gray-500 font-sans font-bold text-[11px] uppercase tracking-wider">
+                  Database:
+                </span>
+                {apiHealth.database_connected ? (
+                  <span className="text-emerald-700 font-bold flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
+                    <span>Connected ({apiHealth.database_type || 'PostgreSQL'})</span>
+                  </span>
+                ) : (
+                  <span className="text-amber-700 font-bold">Disconnected</span>
+                )}
+              </div>
             )}
           </div>
 
@@ -203,25 +243,19 @@ export const AdminLogin: React.FC = () => {
               </div>
             </div>
 
-            {/* Quick Fill Buttons */}
+            {/* Quick Fill Buttons (email only, credentials are secure) */}
             <div className="flex items-center gap-2 text-[11px] text-gray-500">
               <span className="font-semibold">Quick select:</span>
               <button
                 type="button"
-                onClick={() => {
-                  setEmail('agentopslabs@gmail.com');
-                  setPassword('RiseAdmin@2026!');
-                }}
+                onClick={() => setEmail('agentopslabs@gmail.com')}
                 className="px-2 py-0.5 rounded bg-gray-100 hover:bg-gray-200 text-brand-charcoal font-medium border border-gray-200 transition-colors"
               >
                 agentopslabs
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  setEmail('admin@risenshine.com');
-                  setPassword('RiseAdmin@2026!');
-                }}
+                onClick={() => setEmail('admin@risenshine.com')}
                 className="px-2 py-0.5 rounded bg-gray-100 hover:bg-gray-200 text-brand-charcoal font-medium border border-gray-200 transition-colors"
               >
                 admin
@@ -265,7 +299,6 @@ export const AdminLogin: React.FC = () => {
           {/* Security Note */}
           <div className="mt-6 pt-5 border-t border-brand-border text-center text-[11px] text-brand-muted space-y-1">
             <p>Authorized access only. Public registration is permanently disabled.</p>
-            <p className="text-[10px] text-gray-500 font-mono">Password: RiseAdmin@2026!</p>
           </div>
         </div>
       </div>
