@@ -44,17 +44,23 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include Routers
-app.include_router(auth_router, prefix="/api")
-app.include_router(public_router, prefix="/api")
-app.include_router(admin_router, prefix="/api")
-app.include_router(editions_router, prefix="/api")
-app.include_router(articles_router, prefix="/api")
-app.include_router(categories_router, prefix="/api")
-app.include_router(videos_router, prefix="/api")
-app.include_router(archive_router, prefix="/api")
-app.include_router(advertisements_router, prefix="/api")
+# Include Routers (Both with and without /api prefix for seamless Vercel Serverless routing)
+routers = [
+    auth_router,
+    public_router,
+    admin_router,
+    editions_router,
+    articles_router,
+    categories_router,
+    videos_router,
+    archive_router,
+    advertisements_router,
+]
+for r in routers:
+    app.include_router(r, prefix="/api")
+    app.include_router(r)
 
+@app.get("/health", tags=["Health"])
 @app.get("/api/health", tags=["Health"])
 async def health_check():
     return {
