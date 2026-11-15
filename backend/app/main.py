@@ -42,17 +42,10 @@ async def global_exception_handler(request: Request, exc: Exception):
         }
     )
 
-# CORS configuration
+# CORS configuration supporting all local and deployed origins with credentials
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://localhost:3000",
-        "http://localhost:4173",
-        "https://rise-n-shine.vercel.app",
-        "*"
-    ],
+    allow_origin_regex=r"^https?://.*",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
