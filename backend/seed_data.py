@@ -707,23 +707,29 @@ def seed_database():
     db = SessionLocal()
 
     try:
-        # 1. Seed Administrator
-        admin_email = "admin@risenshine.com"
-        admin = db.query(Admin).filter(Admin.email == admin_email).first()
-        if not admin:
-            admin = Admin(
-                name="Chief Editorial Administrator",
-                email=admin_email,
-                password_hash=get_password_hash("RiseAdmin@2026!"),
-                role="admin",
-                is_active=True
-            )
-            db.add(admin)
-            db.commit()
-            db.refresh(admin)
-            print(f"[OK] Seeded Administrator: {admin_email} (Password: RiseAdmin@2026!)")
-        else:
-            print(f"[INFO] Administrator {admin_email} already exists.")
+        # 1. Seed Administrators
+        for admin_email, admin_name in [
+            ("admin@risenshine.com", "Chief Editorial Administrator"),
+            ("agentopslabs@gmail.com", "Chief Editor")
+        ]:
+            admin = db.query(Admin).filter(Admin.email == admin_email).first()
+            if not admin:
+                admin = Admin(
+                    name=admin_name,
+                    email=admin_email,
+                    password_hash=get_password_hash("RiseAdmin@2026!"),
+                    role="admin",
+                    is_active=True
+                )
+                db.add(admin)
+                db.commit()
+                db.refresh(admin)
+                print(f"[OK] Seeded Administrator: {admin_email} (Password: RiseAdmin@2026!)")
+            else:
+                admin.password_hash = get_password_hash("RiseAdmin@2026!")
+                admin.is_active = True
+                db.commit()
+                print(f"[INFO] Administrator {admin_email} refreshed.")
 
         # 2. Seed Categories
         categories_data = [

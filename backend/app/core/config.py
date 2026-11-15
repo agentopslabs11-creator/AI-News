@@ -56,7 +56,7 @@ class Settings(BaseSettings):
     @field_validator("DATABASE_URL", mode="before")
     @classmethod
     def assemble_db_connection(cls, v: Union[str, None]) -> str:
-        if not v or v.strip() == "" or v == "sqlite:///./risenshine.db":
+        if not v or v.strip() == "" or v == "sqlite:///./risenshine.db" or (os.environ.get("VERCEL") and "sqlite" in v):
             v = (
                 os.environ.get("DATABASE_URL")
                 or os.environ.get("POSTGRES_URL")

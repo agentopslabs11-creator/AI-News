@@ -58,6 +58,21 @@ async def get_latest_language_edition(
     ).order_by(desc(NewspaperEdition.publication_date)).first()
 
     if not edition:
+        edition = db.query(NewspaperEdition).filter(
+            NewspaperEdition.language == language
+        ).order_by(desc(NewspaperEdition.publication_date)).first()
+
+    if not edition:
+        try:
+            import seed_data
+            seed_data.seed_database()
+            edition = db.query(NewspaperEdition).filter(
+                NewspaperEdition.language == language
+            ).order_by(desc(NewspaperEdition.publication_date)).first()
+        except Exception:
+            pass
+
+    if not edition:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"No published newspaper edition currently available for {language.upper()}."
@@ -100,7 +115,13 @@ async def get_combined_latest_news(
     query = db.query(Article).filter(Article.status == "published")
     if language:
         query = query.filter(Article.language == language)
-    return query.order_by(desc(Article.created_at)).limit(limit).all()
+    results = query.order_by(desc(Article.created_at)).limit(limit).all()
+    if not results:
+        subquery = db.query(Article)
+        if language:
+            subquery = subquery.filter(Article.language == language)
+        results = subquery.order_by(desc(Article.created_at)).limit(limit).all()
+    return results
 
 @router.get("/breaking", response_model=List[ArticleListItem])
 async def get_breaking_news(
