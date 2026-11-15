@@ -50,23 +50,37 @@ export const Home: React.FC = () => {
     }
   };
 
+  const defaultBroadcastVideo: VideoItem = {
+    id: 1,
+    title: 'Rise ’n’ Shine Editorial Briefing: How AI is Reshaping Modern Scientific Discovery',
+    description: 'Special editorial broadcast covering breakthroughs in autonomous scientific research and digital media integrity.',
+    youtube_url: 'https://youtu.be/J0bg5eTWCpc',
+    youtube_video_id: 'J0bg5eTWCpc',
+    thumbnail_url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=600&q=80',
+    language: 'en',
+    status: 'published',
+    created_at: new Date().toISOString(),
+    published_at: new Date().toISOString(),
+  };
+
   const cachedAds = getCached<{ left: Advertisement[]; right: Advertisement[] }>('rns_cache_ads');
   const cachedVideo = getCached<VideoItem>('rns_cache_video');
+  const cachedEdition = getCached<NewspaperEditionDetail>('rns_cache_english_edition');
 
   const [loading, setLoading] = useState(!cachedAds && !cachedVideo);
 
   // Data states
   const [breakingNews, setBreakingNews] = useState<Article[]>([]);
   const [videos, setVideos] = useState<VideoItem[]>([]);
-  const [activeVideo, setActiveVideo] = useState<VideoItem | null>(cachedVideo || null);
+  const [activeVideo, setActiveVideo] = useState<VideoItem>(cachedVideo || defaultBroadcastVideo);
 
   // 3 Left & 3 Right Advertisements
   const [leftAds, setLeftAds] = useState<Advertisement[]>(cachedAds?.left || []);
   const [rightAds, setRightAds] = useState<Advertisement[]>(cachedAds?.right || []);
 
   // English Newspaper Broadsheet (Default Paper on Home)
-  const [englishEdition, setEnglishEdition] = useState<NewspaperEditionDetail | null>(null);
-  const [editionLoading, setEditionLoading] = useState<boolean>(true);
+  const [englishEdition, setEnglishEdition] = useState<NewspaperEditionDetail | null>(cachedEdition || null);
+  const [editionLoading, setEditionLoading] = useState<boolean>(!cachedEdition);
   const [editionError, setEditionError] = useState<string | null>(null);
 
   // Selected story for authentic popup modal
@@ -109,13 +123,20 @@ export const Home: React.FC = () => {
           try {
             localStorage.setItem('rns_cache_video', JSON.stringify(finalVideos[0]));
           } catch {}
+        } else {
+          setActiveVideo(defaultBroadcastVideo);
         }
 
-        if (edition.status === 'fulfilled') {
+        if (edition.status === 'fulfilled' && edition.value) {
           setEnglishEdition(edition.value);
           setEditionLoading(false);
+          try {
+            localStorage.setItem('rns_cache_english_edition', JSON.stringify(edition.value));
+          } catch {}
         } else {
-          setEditionError('Unable to load English edition broadsheet.');
+          if (!cachedEdition) {
+            setEditionError('Unable to load English edition broadsheet from server.');
+          }
           setEditionLoading(false);
         }
       } catch (err) {
@@ -248,16 +269,23 @@ export const Home: React.FC = () => {
         {/* Edition Quick Switcher Bar */}
         <section className="bg-gray-50 border-b border-brand-border py-2 px-4 sm:px-8">
           <div className="w-full flex items-center justify-between text-xs">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="font-bold text-brand-blue uppercase tracking-wider text-[11px]">
                 Edition:
               </span>
               <span className="font-extrabold text-brand-charcoal bg-white px-2 py-0.5 rounded border border-brand-border">
                 English (Default)
               </span>
-              <span className="text-brand-muted hidden sm:inline">
-                • Scroll down to read today's complete English newspaper broadsheet
+              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span>Neon PostgreSQL Live</span>
               </span>
+              <button
+                onClick={scrollToNewspaper}
+                className="text-[11px] font-black text-brand-blue hover:underline flex items-center gap-1 cursor-pointer bg-blue-50 px-2 py-0.5 rounded border border-blue-200"
+              >
+                <span>Read Newspaper Broadsheet ↓</span>
+              </button>
             </div>
 
             <div className="flex items-center gap-3 text-xs flex-wrap">
