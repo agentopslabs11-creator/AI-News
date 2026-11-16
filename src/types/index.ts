@@ -124,6 +124,8 @@ export interface HTMLValidationResult {
   content_size_bytes: number;
   sanitized: boolean;
   warning?: string | null;
+  file_format?: 'html' | 'pdf';
+  detected_type?: string;
 }
 
 export interface Advertisement {

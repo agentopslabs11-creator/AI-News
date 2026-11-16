@@ -22,6 +22,7 @@ import {
   Tv,
   Image as ImageIcon,
   Archive,
+  Download,
 } from 'lucide-react';
 import { isTodayDate, formatPublicationDate } from '../utils/date';
 import { Header } from '../components/layout/Header';
@@ -684,6 +685,22 @@ export const Home: React.FC = () => {
               {/* Reader Control Buttons OR Archive Links */}
               {isTodayEdition && englishEdition ? (
                 <div className="flex items-center gap-2 flex-wrap">
+                  {/* Download PDF button if PDF broadsheet */}
+                  {Boolean(
+                    englishEdition.original_filename?.toLowerCase().endsWith('.pdf') ||
+                    englishEdition.html_content?.includes('application/pdf')
+                  ) && (
+                    <a
+                      href={`/api/public/editions/${englishEdition.id}/pdf`}
+                      download={`${englishEdition.language}_${englishEdition.publication_date}.pdf`}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white font-bold text-xs uppercase tracking-wider transition-colors shadow-subtle"
+                      title="Download PDF Broadsheet"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>Download PDF</span>
+                    </a>
+                  )}
+
                   {/* Zoom Controls */}
                   <div className="inline-flex items-center bg-gray-50 border border-brand-border rounded-lg p-1 text-xs">
                     <button
@@ -761,147 +778,160 @@ export const Home: React.FC = () => {
                   </div>
                 </div>
               ) : isTodayEdition && englishEdition ? (
-                <div
-                  className="w-full flex justify-center transition-transform duration-200 origin-top overflow-x-auto"
-                  style={{
-                    transform: `scale(${zoomLevel / 100})`,
-                    transformOrigin: 'top center',
-                  }}
-                >
-                  <div className="w-full bg-white rounded border border-brand-border shadow-md overflow-hidden">
-                    {/*
-                      CRITICAL REQUIREMENT:
-                      Render stored HTML inside sandboxed iframe without allow-scripts to prevent execution.
-                    */}
+                Boolean(
+                  englishEdition.original_filename?.toLowerCase().endsWith('.pdf') ||
+                  englishEdition.html_content?.includes('application/pdf')
+                ) ? (
+                  <div className="w-full min-h-[920px] h-[calc(100vh-140px)] bg-white rounded border border-brand-border shadow-md overflow-hidden">
                     <iframe
-                      srcDoc={englishEdition.html_content}
+                      src={`/api/public/editions/${englishEdition.id}/pdf#toolbar=1&navpanes=1`}
                       title={englishEdition.title}
-                      sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation"
-                      className="w-full border-0 bg-white min-h-[900px]"
-                      style={{ width: '100%', minHeight: '900px' }}
-                      onLoad={(e) => {
-                        try {
-                          const doc = e.currentTarget.contentDocument;
-                          if (doc) {
-                            // 1. Inject responsive viewport meta tag
-                            let meta = doc.querySelector('meta[name="viewport"]');
-                            if (!meta) {
-                              meta = doc.createElement('meta');
-                              meta.setAttribute('name', 'viewport');
-                              meta.setAttribute('content', 'width=device-width, initial-scale=1.0');
-                              doc.head?.appendChild(meta);
-                            }
-
-                            // 2. Inject responsive CSS overrides for seamless mobile fit
-                            const respStyle = doc.createElement('style');
-                            respStyle.innerHTML = `
-                              .index, nav.index, nav[aria-label="Pages"], .index .brand, .wrap > a.brand { display: none !important; }
-                              html, body {
-                                width: 100% !important;
-                                max-width: 100vw !important;
-                                margin: 0 !important;
-                                padding: 0 !important;
-                                overflow-x: hidden !important;
-                                -webkit-text-size-adjust: 100%;
-                              }
-                              .wrap {
-                                width: 100% !important;
-                                max-width: 100% !important;
-                                padding-left: 10px !important;
-                                padding-right: 10px !important;
-                                box-sizing: border-box !important;
-                              }
-                              .sheet {
-                                width: 100% !important;
-                                max-width: 100% !important;
-                                margin-left: 0 !important;
-                                margin-right: 0 !important;
-                                box-sizing: border-box !important;
-                                overflow-x: hidden !important;
-                              }
-                              @media (max-width: 768px) {
-                                .mast {
-                                  display: flex !important;
-                                  flex-direction: column !important;
-                                  align-items: center !important;
-                                  text-align: center !important;
-                                  gap: 10px !important;
-                                  padding: 12px 6px !important;
-                                }
-                                .ceos.left, .ceos.right {
-                                  display: flex !important;
-                                  flex-wrap: wrap !important;
-                                  justify-content: center !important;
-                                  gap: 6px !important;
-                                }
-                                .title-block h1 {
-                                  font-size: clamp(26px, 7vw, 42px) !important;
-                                  line-height: 1.1 !important;
-                                }
-                                .lead-grid, .two, .three, .jobs, .figures {
-                                  display: flex !important;
-                                  flex-direction: column !important;
-                                  width: 100% !important;
-                                }
-                                .three.col-rule > *, .col-rule > * {
-                                  border-left: none !important;
-                                  border-top: 1px solid var(--rule, #c9ccd1) !important;
-                                  padding-left: 0 !important;
-                                  padding-top: 12px !important;
-                                }
-                                img {
-                                  max-width: 100% !important;
-                                  height: auto !important;
-                                }
-                                table {
-                                  display: block !important;
-                                  width: 100% !important;
-                                  overflow-x: auto !important;
-                                }
-                              }
-                            `;
-                            doc.head?.appendChild(respStyle);
-                            doc.querySelectorAll('nav.index, nav[aria-label="Pages"], .index').forEach((el) => el.remove());
-
-                            // 3. Dynamic height adjustment to avoid nested scrollbars on mobile
-                            const iframeEl = e.currentTarget;
-                            const updateHeight = () => {
-                              try {
-                                if (doc && doc.body) {
-                                  const contentHeight = Math.max(
-                                    doc.body.scrollHeight,
-                                    doc.documentElement.scrollHeight
-                                  );
-                                  if (contentHeight > 400) {
-                                    iframeEl.style.height = `${contentHeight + 30}px`;
-                                  }
-                                }
-                              } catch {}
-                            };
-                            updateHeight();
-                            setTimeout(updateHeight, 400);
-                            setTimeout(updateHeight, 1200);
-
-                            // 4. Ensure all external links open safely in new tabs
-                            doc.querySelectorAll('a').forEach((anchor) => {
-                              const href = anchor.getAttribute('href');
-                              if (href && (href.startsWith('http://') || href.startsWith('https://'))) {
-                                anchor.setAttribute('target', '_blank');
-                                anchor.setAttribute('rel', 'noopener noreferrer');
-                                anchor.onclick = (ev) => {
-                                  ev.preventDefault();
-                                  window.open(href, '_blank', 'noopener,noreferrer');
-                                };
-                              }
-                            });
-                          }
-                        } catch (err) {
-                          console.warn('Iframe doc access note:', err);
-                        }
-                      }}
+                      className="w-full h-full border-0 bg-gray-100"
                     />
                   </div>
-                </div>
+                ) : (
+                  <div
+                    className="w-full flex justify-center transition-transform duration-200 origin-top overflow-x-auto"
+                    style={{
+                      transform: `scale(${zoomLevel / 100})`,
+                      transformOrigin: 'top center',
+                    }}
+                  >
+                    <div className="w-full bg-white rounded border border-brand-border shadow-md overflow-hidden">
+                      {/*
+                        CRITICAL REQUIREMENT:
+                        Render stored HTML inside sandboxed iframe without allow-scripts to prevent execution.
+                      */}
+                      <iframe
+                        srcDoc={englishEdition.html_content}
+                        title={englishEdition.title}
+                        sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation"
+                        className="w-full border-0 bg-white min-h-[900px]"
+                        style={{ width: '100%', minHeight: '900px' }}
+                        onLoad={(e) => {
+                          try {
+                            const doc = e.currentTarget.contentDocument;
+                            if (doc) {
+                              // 1. Inject responsive viewport meta tag
+                              let meta = doc.querySelector('meta[name="viewport"]');
+                              if (!meta) {
+                                meta = doc.createElement('meta');
+                                meta.setAttribute('name', 'viewport');
+                                meta.setAttribute('content', 'width=device-width, initial-scale=1.0');
+                                doc.head?.appendChild(meta);
+                              }
+
+                              // 2. Inject responsive CSS overrides for seamless mobile fit
+                              const respStyle = doc.createElement('style');
+                              respStyle.innerHTML = `
+                                .index, nav.index, nav[aria-label="Pages"], .index .brand, .wrap > a.brand { display: none !important; }
+                                html, body {
+                                  width: 100% !important;
+                                  max-width: 100vw !important;
+                                  margin: 0 !important;
+                                  padding: 0 !important;
+                                  overflow-x: hidden !important;
+                                  -webkit-text-size-adjust: 100%;
+                                }
+                                .wrap {
+                                  width: 100% !important;
+                                  max-width: 100% !important;
+                                  padding-left: 10px !important;
+                                  padding-right: 10px !important;
+                                  box-sizing: border-box !important;
+                                }
+                                .sheet {
+                                  width: 100% !important;
+                                  max-width: 100% !important;
+                                  margin-left: 0 !important;
+                                  margin-right: 0 !important;
+                                  box-sizing: border-box !important;
+                                  overflow-x: hidden !important;
+                                }
+                                @media (max-width: 768px) {
+                                  .mast {
+                                    display: flex !important;
+                                    flex-direction: column !important;
+                                    align-items: center !important;
+                                    text-align: center !important;
+                                    gap: 10px !important;
+                                    padding: 12px 6px !important;
+                                  }
+                                  .ceos.left, .ceos.right {
+                                    display: flex !important;
+                                    flex-wrap: wrap !important;
+                                    justify-content: center !important;
+                                    gap: 6px !important;
+                                  }
+                                  .title-block h1 {
+                                    font-size: clamp(26px, 7vw, 42px) !important;
+                                    line-height: 1.1 !important;
+                                  }
+                                  .lead-grid, .two, .three, .jobs, .figures {
+                                    display: flex !important;
+                                    flex-direction: column !important;
+                                    width: 100% !important;
+                                  }
+                                  .three.col-rule > *, .col-rule > * {
+                                    border-left: none !important;
+                                    border-top: 1px solid var(--rule, #c9ccd1) !important;
+                                    padding-left: 0 !important;
+                                    padding-top: 12px !important;
+                                  }
+                                  img {
+                                    max-width: 100% !important;
+                                    height: auto !important;
+                                  }
+                                  table {
+                                    display: block !important;
+                                    width: 100% !important;
+                                    overflow-x: auto !important;
+                                  }
+                                }
+                              `;
+                              doc.head?.appendChild(respStyle);
+                              doc.querySelectorAll('nav.index, nav[aria-label="Pages"], .index').forEach((el) => el.remove());
+
+                              // 3. Dynamic height adjustment to avoid nested scrollbars on mobile
+                              const iframeEl = e.currentTarget;
+                              const updateHeight = () => {
+                                try {
+                                  if (doc && doc.body) {
+                                    const contentHeight = Math.max(
+                                      doc.body.scrollHeight,
+                                      doc.documentElement.scrollHeight
+                                    );
+                                    if (contentHeight > 400) {
+                                      iframeEl.style.height = `${contentHeight + 30}px`;
+                                    }
+                                  }
+                                } catch {}
+                              };
+                              updateHeight();
+                              setTimeout(updateHeight, 400);
+                              setTimeout(updateHeight, 1200);
+
+                              // 4. Ensure all external links open safely in new tabs
+                              doc.querySelectorAll('a').forEach((anchor) => {
+                                const href = anchor.getAttribute('href');
+                                if (href && (href.startsWith('http://') || href.startsWith('https://'))) {
+                                  anchor.setAttribute('target', '_blank');
+                                  anchor.setAttribute('rel', 'noopener noreferrer');
+                                  anchor.onclick = (ev) => {
+                                    ev.preventDefault();
+                                    window.open(href, '_blank', 'noopener,noreferrer');
+                                  };
+                                }
+                              });
+                            }
+                          } catch (err) {
+                            console.warn('Iframe doc access note:', err);
+                          }
+                        }}
+                      />
+                    </div>
+                  </div>
+                )
               ) : (
                 /* Authentic Editorial Not Yet Uploaded Presentation */
                 <div className="py-16 sm:py-20 px-4 sm:px-8 text-center max-w-2xl mx-auto space-y-6">

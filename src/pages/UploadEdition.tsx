@@ -11,6 +11,7 @@ import {
   AlertTriangle,
   ArrowRight,
   RefreshCw,
+  FileText,
 } from 'lucide-react';
 import { Modal } from '../components/common/Modal';
 import { newspaperService } from '../services/newspaper';
@@ -30,9 +31,11 @@ export const UploadEdition: React.FC = () => {
   const [statusChoice, setStatusChoice] = useState<'draft' | 'published'>('published');
 
   // File states
+  const [fileFormat, setFileFormat] = useState<'html' | 'pdf'>('html');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [validationResult, setValidationResult] = useState<HTMLValidationResult | null>(null);
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
+  const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
 
   // Progress and UX states
   const [validating, setValidating] = useState<boolean>(false);
@@ -62,29 +65,65 @@ export const UploadEdition: React.FC = () => {
     }
   };
 
+  // Format change handler
+  const handleFormatChange = (fmt: 'html' | 'pdf') => {
+    if (fileFormat === fmt) return;
+    setFileFormat(fmt);
+    setSelectedFile(null);
+    setValidationResult(null);
+    setPreviewHtml(null);
+    if (pdfPreviewUrl) {
+      URL.revokeObjectURL(pdfPreviewUrl);
+      setPdfPreviewUrl(null);
+    }
+    setErrorMessage(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   // Handle file selection
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!file.name.toLowerCase().endsWith('.html') && !file.name.toLowerCase().endsWith('.htm')) {
-      setErrorMessage('Please select a valid HTML file (.html or .htm).');
-      setSelectedFile(null);
-      setValidationResult(null);
-      return;
+    if (fileFormat === 'html') {
+      if (!file.name.toLowerCase().endsWith('.html') && !file.name.toLowerCase().endsWith('.htm')) {
+        setErrorMessage('Please select a valid HTML file (.html or .htm).');
+        setSelectedFile(null);
+        setValidationResult(null);
+        return;
+      }
+    } else {
+      if (!file.name.toLowerCase().endsWith('.pdf')) {
+        setErrorMessage('Please select a valid PDF file (.pdf).');
+        setSelectedFile(null);
+        setValidationResult(null);
+        return;
+      }
     }
 
     setErrorMessage(null);
     setSelectedFile(file);
     setValidationResult(null);
     setPreviewHtml(null);
+    if (pdfPreviewUrl) {
+      URL.revokeObjectURL(pdfPreviewUrl);
+      setPdfPreviewUrl(null);
+    }
 
-    // Read preview text in memory
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      setPreviewHtml(event.target?.result as string);
-    };
-    reader.readAsText(file, 'utf-8');
+    if (fileFormat === 'html') {
+      // Read preview text in memory
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setPreviewHtml(event.target?.result as string);
+      };
+      reader.readAsText(file, 'utf-8');
+    } else {
+      // Create object URL for PDF preview
+      const objUrl = URL.createObjectURL(file);
+      setPdfPreviewUrl(objUrl);
+    }
 
     // Run backend validation & sanitization check
     try {
@@ -93,7 +132,7 @@ export const UploadEdition: React.FC = () => {
       setValidationResult(result);
     } catch (err: any) {
       setErrorMessage(
-        err.response?.data?.detail || 'HTML file validation failed. Ensure valid UTF-8 encoding.'
+        err.response?.data?.detail || `${fileFormat.toUpperCase()} file validation failed. Ensure a valid, non-corrupted file.`
       );
       setValidationResult(null);
     } finally {
@@ -108,7 +147,7 @@ export const UploadEdition: React.FC = () => {
     setSuccessMessage(null);
 
     if (!selectedFile) {
-      setErrorMessage('Please select an HTML file to upload.');
+      setErrorMessage(`Please select a ${fileFormat.toUpperCase()} file to upload.`);
       return;
     }
 
@@ -118,6 +157,7 @@ export const UploadEdition: React.FC = () => {
     formData.append('title', effectiveTitle);
     formData.append('language', language);
     formData.append('publication_date', publicationDate);
+    formData.append('file_format', fileFormat);
     if (description.trim()) {
       formData.append('description', description.trim());
     }
@@ -136,7 +176,7 @@ export const UploadEdition: React.FC = () => {
         localStorage.removeItem('rns_cache_english_edition');
       } catch {}
       setSuccessMessage(
-        `Successfully published & updated edition #${uploaded.id}: "${uploaded.title}". Previous Live Wire deleted and new Live Wire updated automatically!`
+        `Successfully published & updated edition #${uploaded.id}: "${uploaded.title}" (${fileFormat.toUpperCase()} format). Previous Live Wire deleted and new Live Wire updated automatically!`
       );
       setTimeout(() => {
         navigate('/admin/editions');
@@ -300,16 +340,86 @@ export const UploadEdition: React.FC = () => {
           </div>
         </div>
 
-        {/* Step 3: HTML File Upload & Validation */}
+        {/* Step 3: File Format Selection & Upload */}
         <div className="bg-white border border-brand-border rounded-xl p-6 shadow-subtle space-y-5">
           <div className="flex items-center justify-between">
             <h3 className="font-headline text-lg font-bold text-brand-charcoal flex items-center gap-2">
               <span className="w-6 h-6 rounded-full bg-brand-blue text-white text-xs flex items-center justify-center font-mono">
                 3
               </span>
-              <span>Upload HTML Newspaper File</span>
+              <span>Upload Broadsheet (HTML / PDF)</span>
             </h3>
-            <span className="text-[11px] text-brand-muted">Max Limit: 5 MB</span>
+            <span className="text-[11px] text-brand-muted">
+              {fileFormat === 'html' ? 'Max Limit: 5 MB' : 'Max Limit: 25 MB'}
+            </span>
+          </div>
+
+          {/* Option: Choose HTML or PDF */}
+          <div className="space-y-1.5">
+            <label className="block text-xs font-bold uppercase tracking-wider text-brand-charcoal">
+              File Format Option (Telugu, Hindi & English)
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => handleFormatChange('html')}
+                className={`p-3.5 rounded-xl border-2 text-left transition-all flex items-center gap-3 ${
+                  fileFormat === 'html'
+                    ? 'border-brand-blue bg-blue-50/50 shadow-xs'
+                    : 'border-brand-border bg-white hover:bg-gray-50'
+                }`}
+              >
+                <div
+                  className={`w-9 h-9 rounded-lg flex items-center justify-center ${
+                    fileFormat === 'html'
+                      ? 'bg-brand-blue text-white'
+                      : 'bg-gray-100 text-brand-charcoal'
+                  }`}
+                >
+                  <FileCode className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-brand-charcoal flex items-center gap-1.5">
+                    <span>HTML Broadsheet</span>
+                    {fileFormat === 'html' && (
+                      <span className="text-[9px] font-black uppercase text-brand-blue bg-white px-1.5 py-0.2 rounded border border-blue-200">
+                        Active
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-[11px] text-brand-muted">.html or .htm web edition</div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleFormatChange('pdf')}
+                className={`p-3.5 rounded-xl border-2 text-left transition-all flex items-center gap-3 ${
+                  fileFormat === 'pdf'
+                    ? 'border-red-500 bg-red-50/50 shadow-xs'
+                    : 'border-brand-border bg-white hover:bg-gray-50'
+                }`}
+              >
+                <div
+                  className={`w-9 h-9 rounded-lg flex items-center justify-center ${
+                    fileFormat === 'pdf' ? 'bg-red-600 text-white' : 'bg-gray-100 text-brand-charcoal'
+                  }`}
+                >
+                  <FileText className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-brand-charcoal flex items-center gap-1.5">
+                    <span>PDF Broadsheet</span>
+                    {fileFormat === 'pdf' && (
+                      <span className="text-[9px] font-black uppercase text-red-600 bg-white px-1.5 py-0.2 rounded border border-red-200">
+                        Active
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-[11px] text-brand-muted">.pdf digital print edition</div>
+                </div>
+              </button>
+            </div>
           </div>
 
           {/* Drag & Drop Area */}
@@ -324,20 +434,30 @@ export const UploadEdition: React.FC = () => {
             <input
               ref={fileInputRef}
               type="file"
-              accept=".html,.htm"
+              accept={fileFormat === 'html' ? '.html,.htm' : '.pdf'}
               onChange={handleFileChange}
               className="hidden"
             />
             <div className="flex flex-col items-center justify-center space-y-3">
-              <div className="w-12 h-12 rounded-full bg-blue-50 text-brand-blue flex items-center justify-center">
+              <div
+                className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                  fileFormat === 'html'
+                    ? 'bg-blue-50 text-brand-blue'
+                    : 'bg-red-50 text-red-600'
+                }`}
+              >
                 <Upload className="w-6 h-6" />
               </div>
               <div>
                 <p className="text-xs font-bold text-brand-charcoal">
-                  {selectedFile ? selectedFile.name : 'Click to select or drag and drop newspaper HTML file'}
+                  {selectedFile
+                    ? selectedFile.name
+                    : `Click to select or drag and drop newspaper ${fileFormat.toUpperCase()} file`}
                 </p>
                 <p className="text-[11px] text-brand-muted mt-1">
-                  Only .html and .htm files are supported. Must be UTF-8 encoded.
+                  {fileFormat === 'html'
+                    ? 'Only .html and .htm files are supported. Must be UTF-8 encoded.'
+                    : 'Only .pdf files are supported (Telugu, Hindi, and English broadsheets).'}
                 </p>
               </div>
               {selectedFile && (
@@ -352,7 +472,11 @@ export const UploadEdition: React.FC = () => {
           {validating && (
             <div className="p-4 rounded-lg bg-blue-50 border border-blue-200 text-xs text-brand-blue flex items-center gap-3">
               <RefreshCw className="w-4 h-4 animate-spin" />
-              <span>Analyzing HTML encoding and sanitizing tags...</span>
+              <span>
+                {fileFormat === 'html'
+                  ? 'Analyzing HTML encoding and sanitizing tags...'
+                  : 'Validating PDF header structure and integrity...'}
+              </span>
             </div>
           )}
 
@@ -361,10 +485,14 @@ export const UploadEdition: React.FC = () => {
               <div className="flex items-center justify-between text-emerald-800 font-bold">
                 <span className="flex items-center gap-1.5">
                   <CheckCircle className="w-4 h-4 text-emerald-600" />
-                  <span>Validation Passed • Clean BroadSheet Structure</span>
+                  <span>
+                    {fileFormat === 'pdf'
+                      ? 'Validation Passed • Authentic PDF Broadsheet Ready'
+                      : 'Validation Passed • Clean BroadSheet Structure'}
+                  </span>
                 </span>
                 <span className="text-[11px] font-mono">
-                  Sanitized Size: {(validationResult.content_size_bytes / 1024).toFixed(1)} KB
+                  File Size: {(validationResult.content_size_bytes / 1024).toFixed(1)} KB
                 </span>
               </div>
 
@@ -374,7 +502,7 @@ export const UploadEdition: React.FC = () => {
                 </div>
               )}
 
-              {/* Sample headings parsed */}
+              {/* Sample headings parsed (for HTML) */}
               {validationResult.sample_headings?.length > 0 && (
                 <div className="text-[11px] text-brand-muted">
                   <span className="font-bold text-brand-charcoal">Parsed Headline: </span>
@@ -383,7 +511,7 @@ export const UploadEdition: React.FC = () => {
               )}
 
               {/* Preview Button */}
-              {previewHtml && (
+              {(previewHtml || pdfPreviewUrl) && (
                 <div className="pt-2">
                   <button
                     type="button"
@@ -391,7 +519,9 @@ export const UploadEdition: React.FC = () => {
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded border border-brand-blue bg-white text-brand-blue text-xs font-bold hover:bg-blue-50 transition-colors shadow-sm"
                   >
                     <Eye className="w-3.5 h-3.5" />
-                    <span>Live Broadsheet Preview</span>
+                    <span>
+                      {fileFormat === 'pdf' ? 'Live PDF Broadsheet Preview' : 'Live Broadsheet Preview'}
+                    </span>
                   </button>
                 </div>
               )}
@@ -526,8 +656,8 @@ export const UploadEdition: React.FC = () => {
         </Modal>
       )}
 
-      {/* Live Sandboxed Broadsheet Preview Modal */}
-      {showPreviewModal && previewHtml && (
+      {/* Live Sandboxed Broadsheet Preview Modal (HTML & PDF) */}
+      {showPreviewModal && (previewHtml || pdfPreviewUrl) && (
         <Modal
           isOpen={showPreviewModal}
           onClose={() => setShowPreviewModal(false)}
@@ -536,16 +666,30 @@ export const UploadEdition: React.FC = () => {
         >
           <div className="space-y-4">
             <div className="p-2.5 bg-gray-50 rounded border border-brand-border text-xs text-brand-muted flex items-center justify-between">
-              <span>Sandboxed preview rendering in secure iframe</span>
-              <span className="font-bold text-brand-blue uppercase">{language} DESK</span>
+              <span>
+                {fileFormat === 'pdf'
+                  ? 'Digital PDF Broadsheet preview'
+                  : 'Sandboxed preview rendering in secure iframe'}
+              </span>
+              <span className="font-bold text-brand-blue uppercase">
+                {language} DESK • {fileFormat.toUpperCase()}
+              </span>
             </div>
             <div className="w-full h-[650px] border border-brand-border rounded overflow-hidden bg-white shadow-inner">
-              <iframe
-                title="Preview"
-                srcDoc={previewHtml}
-                sandbox="allow-same-origin"
-                className="w-full h-full border-0"
-              />
+              {fileFormat === 'pdf' && pdfPreviewUrl ? (
+                <iframe
+                  title="PDF Preview"
+                  src={pdfPreviewUrl}
+                  className="w-full h-full border-0"
+                />
+              ) : previewHtml ? (
+                <iframe
+                  title="HTML Preview"
+                  srcDoc={previewHtml}
+                  sandbox="allow-same-origin"
+                  className="w-full h-full border-0"
+                />
+              ) : null}
             </div>
           </div>
         </Modal>
