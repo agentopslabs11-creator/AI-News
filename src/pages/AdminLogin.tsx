@@ -22,7 +22,7 @@ export const AdminLogin: React.FC = () => {
   const redirectUrl = (location.state as any)?.from?.pathname || '/admin';
   const sessionExpired = (location.state as any)?.sessionExpired;
 
-  const [email, setEmail] = useState('agentopslabs@gmail.com');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
@@ -209,7 +209,8 @@ export const AdminLogin: React.FC = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  placeholder="admin@risenshine.com"
+                  autoComplete="email"
+                  placeholder="name@example.com"
                   className="w-full pl-10 pr-4 py-2.5 text-sm border border-brand-border rounded-lg outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10 bg-white"
                 />
               </div>
@@ -229,6 +230,7 @@ export const AdminLogin: React.FC = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
+                  autoComplete="current-password"
                   placeholder="••••••••••••"
                   className="w-full pl-10 pr-11 py-2.5 text-sm border border-brand-border rounded-lg outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10 bg-white"
                 />
@@ -237,29 +239,11 @@ export const AdminLogin: React.FC = () => {
                   onClick={() => setShowPassword(!showPassword)}
                   className="p-1 text-gray-400 hover:text-brand-charcoal absolute right-3 top-2.5"
                   tabIndex={-1}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
-            </div>
-
-            {/* Quick Fill Buttons (email only, credentials are secure) */}
-            <div className="flex items-center gap-2 text-[11px] text-gray-500">
-              <span className="font-semibold">Quick select:</span>
-              <button
-                type="button"
-                onClick={() => setEmail('agentopslabs@gmail.com')}
-                className="px-2 py-0.5 rounded bg-gray-100 hover:bg-gray-200 text-brand-charcoal font-medium border border-gray-200 transition-colors"
-              >
-                agentopslabs
-              </button>
-              <button
-                type="button"
-                onClick={() => setEmail('admin@risenshine.com')}
-                className="px-2 py-0.5 rounded bg-gray-100 hover:bg-gray-200 text-brand-charcoal font-medium border border-gray-200 transition-colors"
-              >
-                admin
-              </button>
             </div>
 
             {/* Remember session checkbox */}

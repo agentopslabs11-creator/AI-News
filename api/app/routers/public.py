@@ -143,7 +143,17 @@ async def get_breaking_news(
     ).order_by(desc(NewspaperEdition.publication_date), desc(NewspaperEdition.id)).first()
 
     if latest_edition:
-        # Retrieve all articles extracted directly from this submitted HTML broadsheet
+        # Prioritize exact LIVE WIRE items extracted from this newly published broadsheet
+        live_wire_articles = db.query(Article).filter(
+            Article.edition_id == latest_edition.id,
+            Article.is_breaking == True,
+            Article.status == "published"
+        ).order_by(Article.id.asc()).limit(limit).all()
+
+        if live_wire_articles:
+            return live_wire_articles
+
+        # Fallback to all stories extracted directly from this broadsheet
         edition_articles = db.query(Article).filter(
             Article.edition_id == latest_edition.id,
             Article.status == "published"
@@ -152,11 +162,18 @@ async def get_breaking_news(
         if edition_articles:
             return edition_articles
 
-    # 2. Fallback strictly to published articles of this language from our editions
+    # 2. Fallback strictly to breaking articles of this language from our editions
     articles = db.query(Article).filter(
         Article.status == "published",
-        Article.language == target_lang
+        Article.language == target_lang,
+        Article.is_breaking == True
     ).order_by(desc(Article.id)).limit(limit).all()
+
+    if not articles:
+        articles = db.query(Article).filter(
+            Article.status == "published",
+            Article.language == target_lang
+        ).order_by(desc(Article.id)).limit(limit).all()
 
     return articles
 

@@ -20,6 +20,7 @@ import { RiseShineLogo } from '../components/common/RiseShineLogo';
 import { LanguageBadge } from '../components/common/LanguageBadge';
 import { newspaperService } from '../services/newspaper';
 import { NewspaperEdition, NewspaperEditionDetail, LanguageCode } from '../types';
+import { isTodayDate } from '../utils/date';
 
 export const EpaperReader: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -240,26 +241,32 @@ export const EpaperReader: React.FC = () => {
             </div>
           </div>
         ) : error ? (
-          <div className="my-auto py-20 max-w-md text-center p-8 border border-brand-border rounded-xl bg-gray-50">
-            <AlertCircle className="w-12 h-12 text-amber-500 mx-auto mb-3" />
-            <h3 className="font-headline text-xl font-bold text-brand-charcoal mb-2">
-              Edition Not Found
+          <div className="my-auto py-16 max-w-lg text-center p-8 border border-brand-border rounded-2xl bg-gray-50/80 shadow-subtle">
+            <div className="w-16 h-16 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center mx-auto mb-4">
+              <AlertCircle className="w-8 h-8 text-amber-600" />
+            </div>
+            <h3 className="font-headline text-2xl font-black text-brand-charcoal mb-2">
+              {(!dateParam || isTodayDate(dateParam))
+                ? 'Today’s Edition Not Yet Uploaded'
+                : 'Edition Not Found'}
             </h3>
-            <p className="text-xs text-brand-muted mb-6 leading-relaxed">
-              {error}
+            <p className="text-xs sm:text-sm text-brand-muted mb-6 leading-relaxed max-w-md mx-auto">
+              {(!dateParam || isTodayDate(dateParam))
+                ? 'Today’s broadsheet edition has not yet been uploaded. Our editorial desk is preparing today’s publication. In the meantime, you can read all previous editions in the Previous Papers section.'
+                : error}
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <button
-                onClick={() => handleLanguageChange('en')}
-                className="px-4 py-2 rounded bg-brand-blue text-white text-xs font-bold uppercase tracking-wider"
-              >
-                View Latest English Edition
-              </button>
               <Link
                 to="/archive"
-                className="px-4 py-2 rounded border border-brand-border text-xs font-bold hover:bg-gray-100"
+                className="px-5 py-2.5 rounded-lg bg-brand-blue text-white text-xs font-bold uppercase tracking-wider hover:bg-blue-900 transition-colors shadow-subtle"
               >
-                Open Archive
+                Browse Previous Papers
+              </Link>
+              <Link
+                to="/"
+                className="px-5 py-2.5 rounded-lg border border-brand-border bg-white text-xs font-bold text-brand-charcoal hover:bg-gray-100 transition-colors"
+              >
+                Return to Home
               </Link>
             </div>
           </div>

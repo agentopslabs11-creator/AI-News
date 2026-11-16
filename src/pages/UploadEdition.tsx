@@ -131,8 +131,12 @@ export const UploadEdition: React.FC = () => {
       setUploading(true);
       const uploaded = await newspaperService.uploadEdition(formData);
       setDuplicateConflict(null);
+      try {
+        localStorage.removeItem('rns_cache_breaking_news');
+        localStorage.removeItem('rns_cache_english_edition');
+      } catch {}
       setSuccessMessage(
-        `Successfully published & updated edition #${uploaded.id}: "${uploaded.title}". Previous latest news deleted and new latest news updated automatically!`
+        `Successfully published & updated edition #${uploaded.id}: "${uploaded.title}". Previous Live Wire deleted and new Live Wire updated automatically!`
       );
       setTimeout(() => {
         navigate('/admin/editions');

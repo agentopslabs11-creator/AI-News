@@ -21,7 +21,9 @@ import {
   Clock,
   Tv,
   Image as ImageIcon,
+  Archive,
 } from 'lucide-react';
+import { isTodayDate, formatPublicationDate } from '../utils/date';
 import { Header } from '../components/layout/Header';
 import { Navigation } from '../components/layout/Navigation';
 import { Footer } from '../components/layout/Footer';
@@ -67,7 +69,11 @@ export const Home: React.FC = () => {
   const cachedVideo = getCached<VideoItem>('rns_cache_video');
   const cachedEdition = getCached<NewspaperEditionDetail>('rns_cache_english_edition');
 
-  const [loading, setLoading] = useState(!cachedAds && !cachedVideo);
+  // Check if cached edition or video is actually from today
+  const initialIsTodayEdition = cachedEdition ? isTodayDate(cachedEdition.publication_date) : false;
+  const initialIsTodayVideo = cachedVideo ? isTodayDate(cachedVideo.published_at || cachedVideo.created_at) : false;
+
+  const [loading, setLoading] = useState(!cachedAds && !cachedEdition);
 
   // Cached Breaking News strictly from submitted newspaper broadsheet
   const cachedBreakingNews: Article[] = (() => {
@@ -81,15 +87,23 @@ export const Home: React.FC = () => {
 
   // Data states
   const [breakingNews, setBreakingNews] = useState<Article[]>(cachedBreakingNews);
-  const [videos, setVideos] = useState<VideoItem[]>([]);
-  const [activeVideo, setActiveVideo] = useState<VideoItem>(cachedVideo || defaultBroadcastVideo);
+  const [allVideos, setAllVideos] = useState<VideoItem[]>([]);
+  // Only set todaysVideo if it is genuinely published today
+  const [todaysVideo, setTodaysVideo] = useState<VideoItem | null>(initialIsTodayVideo ? cachedVideo : null);
 
   // 3 Left & 3 Right Advertisements
   const [leftAds, setLeftAds] = useState<Advertisement[]>(cachedAds?.left || []);
   const [rightAds, setRightAds] = useState<Advertisement[]>(cachedAds?.right || []);
 
   // English Newspaper Broadsheet (Default Paper on Home)
-  const [englishEdition, setEnglishEdition] = useState<NewspaperEditionDetail | null>(cachedEdition || null);
+  // If not today's edition, englishEdition stays null and latestPreviousEdition stores it
+  const [englishEdition, setEnglishEdition] = useState<NewspaperEditionDetail | null>(
+    initialIsTodayEdition ? cachedEdition : null
+  );
+  const [latestPreviousEdition, setLatestPreviousEdition] = useState<NewspaperEditionDetail | null>(
+    !initialIsTodayEdition && cachedEdition ? cachedEdition : null
+  );
+  const [isTodayEdition, setIsTodayEdition] = useState<boolean>(initialIsTodayEdition);
   const [editionLoading, setEditionLoading] = useState<boolean>(!cachedEdition);
   const [editionError, setEditionError] = useState<string | null>(null);
 
@@ -109,7 +123,7 @@ export const Home: React.FC = () => {
         const [breaking, adsData, videoList, edition] = await Promise.allSettled([
           newspaperService.getBreakingNews('en'),
           newspaperService.getAdvertisements(),
-          newspaperService.getVideos('en', 6),
+          newspaperService.getVideos('en', 12),
           newspaperService.getLatestEdition('en'),
         ]);
 
@@ -133,25 +147,51 @@ export const Home: React.FC = () => {
             v.title.toLowerCase().includes('rise')
           );
           const finalVideos = rnsVideos.length > 0 ? rnsVideos : videoList.value;
-          setVideos(finalVideos);
-          setActiveVideo(finalVideos[0]);
-          try {
-            localStorage.setItem('rns_cache_video', JSON.stringify(finalVideos[0]));
-          } catch {}
+          setAllVideos(finalVideos);
+
+          // Find if there is an editorial video published TODAY
+          const todayVid = finalVideos.find((v: VideoItem) =>
+            isTodayDate(v.published_at || v.created_at)
+          );
+
+          if (todayVid) {
+            setTodaysVideo(todayVid);
+            try {
+              localStorage.setItem('rns_cache_video', JSON.stringify(todayVid));
+            } catch {}
+          } else {
+            // Previous video goes to Videos session, NOT featured as today's
+            setTodaysVideo(null);
+            try {
+              localStorage.removeItem('rns_cache_video');
+            } catch {}
+          }
         } else {
-          setActiveVideo(defaultBroadcastVideo);
+          setTodaysVideo(null);
+          setAllVideos([]);
         }
 
         if (edition.status === 'fulfilled' && edition.value) {
-          setEnglishEdition(edition.value);
-          setEditionLoading(false);
-          try {
-            localStorage.setItem('rns_cache_english_edition', JSON.stringify(edition.value));
-          } catch {}
-        } else {
-          if (!cachedEdition) {
-            setEditionError('Unable to load English edition broadsheet from server.');
+          const isToday = isTodayDate(edition.value.publication_date);
+          if (isToday) {
+            setEnglishEdition(edition.value);
+            setIsTodayEdition(true);
+            try {
+              localStorage.setItem('rns_cache_english_edition', JSON.stringify(edition.value));
+            } catch {}
+          } else {
+            // Previous edition goes to Previous Papers session, NOT featured on Home as today's paper
+            setEnglishEdition(null);
+            setIsTodayEdition(false);
+            setLatestPreviousEdition(edition.value);
+            try {
+              localStorage.removeItem('rns_cache_english_edition');
+            } catch {}
           }
+          setEditionLoading(false);
+        } else {
+          setEnglishEdition(null);
+          setIsTodayEdition(false);
           setEditionLoading(false);
         }
       } catch (err) {
@@ -291,15 +331,22 @@ export const Home: React.FC = () => {
               <span className="font-extrabold text-brand-charcoal bg-white px-2 py-0.5 rounded border border-brand-border">
                 English (Default)
               </span>
-              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                <span>Neon PostgreSQL Live</span>
-              </span>
+              {isTodayEdition ? (
+                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <span>Today’s Broadsheet Live</span>
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                  <span>Today's Broadsheet: In Production</span>
+                </span>
+              )}
               <button
                 onClick={scrollToNewspaper}
                 className="text-[11px] font-black text-brand-blue hover:underline flex items-center gap-1 cursor-pointer bg-blue-50 px-2 py-0.5 rounded border border-blue-200"
               >
-                <span>Read Newspaper Broadsheet ↓</span>
+                <span>{isTodayEdition ? 'Read Newspaper Broadsheet ↓' : 'Check Today’s Paper Status ↓'}</span>
               </button>
             </div>
 
@@ -400,11 +447,11 @@ export const Home: React.FC = () => {
                     <Play className="w-3 h-3 fill-brand-blue text-brand-blue" />
                     <span>Rise ’n’ Shine Video Broadcast</span>
                   </span>
-                  {loading && !activeVideo ? (
+                  {loading && !todaysVideo ? (
                     <span className="text-[9px] font-bold text-brand-muted bg-gray-50 px-2 py-0.5 rounded border border-gray-200">
                       Loading...
                     </span>
-                  ) : activeVideo && activeVideo.youtube_video_id && activeVideo.youtube_video_id.trim() !== '' ? (
+                  ) : todaysVideo && todaysVideo.youtube_video_id && todaysVideo.youtube_video_id.trim() !== '' ? (
                     <span className="text-[9px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
                       Live Video Desk
                     </span>
@@ -416,7 +463,7 @@ export const Home: React.FC = () => {
                   )}
                 </div>
 
-                {loading && !activeVideo ? (
+                {loading && !todaysVideo ? (
                   <div className="border border-brand-border rounded-2xl bg-white shadow-subtle p-3 space-y-3 animate-pulse">
                     <div className="w-full aspect-video rounded-xl bg-gray-900 flex items-center justify-center">
                       <Play className="w-12 h-12 text-gray-700" />
@@ -427,13 +474,13 @@ export const Home: React.FC = () => {
                       <div className="h-3 bg-gray-100 rounded w-full" />
                     </div>
                   </div>
-                ) : activeVideo && activeVideo.youtube_video_id && activeVideo.youtube_video_id.trim() !== '' ? (
+                ) : todaysVideo && todaysVideo.youtube_video_id && todaysVideo.youtube_video_id.trim() !== '' ? (
                   <div className="border border-brand-border rounded-2xl overflow-hidden bg-white shadow-subtle p-3 space-y-3">
                     {/* Responsive 16:9 YouTube Video Embed */}
                     <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-black shadow-inner">
                       <iframe
-                        src={`https://www.youtube-nocookie.com/embed/${activeVideo.youtube_video_id}`}
-                        title={activeVideo.title}
+                        src={`https://www.youtube-nocookie.com/embed/${todaysVideo.youtube_video_id}`}
+                        title={todaysVideo.title}
                         className="w-full h-full border-0"
                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                         allowFullScreen
@@ -444,10 +491,10 @@ export const Home: React.FC = () => {
                     <div>
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-brand-yellow text-brand-charcoal">
-                          Featured Report
+                          Today's Broadcast
                         </span>
                         <span className="text-[11px] text-brand-muted">
-                          {new Date(activeVideo.published_at || activeVideo.created_at).toLocaleDateString('en-US', {
+                          {new Date(todaysVideo.published_at || todaysVideo.created_at).toLocaleDateString('en-US', {
                             month: 'short',
                             day: 'numeric',
                             year: 'numeric',
@@ -455,19 +502,19 @@ export const Home: React.FC = () => {
                         </span>
                       </div>
                       <h3 className="font-headline text-lg sm:text-xl font-bold text-brand-charcoal leading-snug">
-                        {activeVideo.title}
+                        {todaysVideo.title}
                       </h3>
-                      {activeVideo.description && (
+                      {todaysVideo.description && (
                         <p className="text-xs text-brand-muted mt-1 line-clamp-2 leading-relaxed">
-                          {activeVideo.description}
+                          {todaysVideo.description}
                         </p>
                       )}
                     </div>
                   </div>
                 ) : (
-                  <div className="border border-brand-border rounded-2xl overflow-hidden bg-gradient-to-b from-gray-50/80 via-white to-gray-50/40 shadow-subtle p-8 flex flex-col items-center justify-center text-center space-y-4 min-h-[380px]">
+                  <div className="border border-brand-border rounded-2xl overflow-hidden bg-gradient-to-b from-gray-50/90 via-white to-gray-50/50 shadow-subtle p-6 sm:p-8 flex flex-col items-center justify-center text-center space-y-4 min-h-[380px]">
                     {/* Scheduled Pill */}
-                    <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-amber-50 border border-amber-300 text-amber-900 text-xs font-black uppercase tracking-wider shadow-xs">
+                    <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-50 border border-amber-300 text-amber-900 text-xs font-black uppercase tracking-wider shadow-xs">
                       <Clock className="w-3.5 h-3.5 text-amber-700 animate-pulse" />
                       <span>Premieres Daily at 7:00 PM</span>
                     </div>
@@ -482,24 +529,35 @@ export const Home: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Prominent Message */}
+                    {/* Prominent Message Requested by User */}
                     <div className="max-w-md space-y-2">
                       <h3 className="font-headline text-2xl sm:text-3xl font-black text-brand-charcoal tracking-tight">
-                        Not Added Yet
+                        Not Yet Uploaded
                       </h3>
-                      <p className="text-sm font-semibold text-brand-charcoal">
-                        Today’s editorial visual broadcast will be added at <span className="text-brand-blue font-black underline decoration-brand-yellow underline-offset-4">7:00 PM</span>.
+                      <p className="text-sm font-bold text-brand-charcoal">
+                        Our team is working on latest updates, video will upload at <span className="text-brand-blue font-black underline decoration-brand-yellow underline-offset-4">7:00 PM</span>.
                       </p>
                       <p className="text-xs text-brand-muted leading-relaxed max-w-sm mx-auto">
-                        Our news desk is currently finalizing today’s high-impact AI and technology briefing. Please tune in at 7:00 PM to watch the full broadcast.
+                        Our news desk is currently finalizing today’s high-impact AI and technology briefing. In the meantime, you can watch all previous video broadcasts in our Video section.
                       </p>
+                    </div>
+
+                    {/* Action link pointing to Videos session */}
+                    <div className="pt-1">
+                      <Link
+                        to="/videos"
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-blue text-white font-bold text-xs uppercase tracking-wider hover:bg-blue-900 transition-colors shadow-subtle group"
+                      >
+                        <Play className="w-3.5 h-3.5 fill-white" />
+                        <span>Watch Previous Videos in Video Desk →</span>
+                      </Link>
                     </div>
 
                     {/* Editorial Desk Footer Note */}
                     <div className="pt-3 border-t border-brand-border w-full flex items-center justify-center gap-2 text-[11px] text-brand-muted">
                       <span className="font-bold text-brand-blue">Rise ’n’ Shine Video Desk</span>
                       <span>•</span>
-                      <span>Scheduled Release: 7:00 PM Today</span>
+                      <span>Scheduled Daily Release: 7:00 PM</span>
                     </div>
                   </div>
                 )}
@@ -592,80 +650,96 @@ export const Home: React.FC = () => {
                   <span>Official English Digital Broadsheet</span>
                 </div>
                 <h2 className="font-headline text-2xl sm:text-4xl font-black text-brand-charcoal">
-                  {englishEdition?.title || 'Rise ’n’ Shine – English National Edition'}
+                  {isTodayEdition && englishEdition?.title
+                    ? englishEdition.title
+                    : 'Rise ’n’ Shine – English Daily Broadsheet'}
                 </h2>
                 <div className="flex items-center gap-3 text-xs text-brand-muted mt-1.5 flex-wrap">
                   <span className="flex items-center gap-1 font-semibold text-brand-charcoal">
                     <Calendar className="w-3.5 h-3.5 text-brand-blue" />
                     <span>
-                      {englishEdition?.publication_date
-                        ? new Date(englishEdition.publication_date).toLocaleDateString('en-US', {
-                            weekday: 'long',
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric',
-                          })
-                        : 'Today’s Publication'}
+                      {isTodayEdition && englishEdition?.publication_date
+                        ? formatPublicationDate(englishEdition.publication_date)
+                        : formatPublicationDate(new Date())}
                     </span>
                   </span>
                   <span>•</span>
-                  <span className="flex items-center gap-1 text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 text-[11px] font-bold">
-                    <ShieldCheck className="w-3.5 h-3.5" />
-                    <span>Authentic Sandboxed HTML</span>
-                  </span>
+                  {isTodayEdition ? (
+                    <span className="flex items-center gap-1 text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 text-[11px] font-bold">
+                      <ShieldCheck className="w-3.5 h-3.5" />
+                      <span>Today's Edition Live</span>
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1 text-amber-800 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 text-[11px] font-bold">
+                      <Clock className="w-3.5 h-3.5 text-amber-700" />
+                      <span>In Production</span>
+                    </span>
+                  )}
                   <span>•</span>
                   <span>Direct PostgreSQL Storage</span>
                 </div>
               </div>
 
-              {/* Reader Control Buttons */}
-              <div className="flex items-center gap-2 flex-wrap">
-                {/* Zoom Controls */}
-                <div className="inline-flex items-center bg-gray-50 border border-brand-border rounded-lg p-1 text-xs">
+              {/* Reader Control Buttons OR Archive Links */}
+              {isTodayEdition && englishEdition ? (
+                <div className="flex items-center gap-2 flex-wrap">
+                  {/* Zoom Controls */}
+                  <div className="inline-flex items-center bg-gray-50 border border-brand-border rounded-lg p-1 text-xs">
+                    <button
+                      onClick={handleZoomOut}
+                      className="p-1.5 rounded hover:bg-gray-200 text-brand-charcoal"
+                      title="Zoom Out"
+                    >
+                      <ZoomOut className="w-4 h-4" />
+                    </button>
+                    <span className="px-2.5 font-mono font-bold text-brand-charcoal text-xs min-w-[50px] text-center">
+                      {zoomLevel}%
+                    </span>
+                    <button
+                      onClick={handleZoomIn}
+                      className="p-1.5 rounded hover:bg-gray-200 text-brand-charcoal"
+                      title="Zoom In"
+                    >
+                      <ZoomIn className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={handleZoomReset}
+                      className="p-1.5 rounded hover:bg-gray-200 text-brand-charcoal border-l border-brand-border ml-1"
+                      title="Reset Zoom (100%)"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  {/* Fullscreen Toggle */}
                   <button
-                    onClick={handleZoomOut}
-                    className="p-1.5 rounded hover:bg-gray-200 text-brand-charcoal"
-                    title="Zoom Out"
+                    onClick={toggleFullscreen}
+                    className="p-2 rounded-lg border border-brand-border hover:bg-gray-50 text-brand-charcoal transition-colors"
+                    title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen Reading Mode'}
                   >
-                    <ZoomOut className="w-4 h-4" />
+                    {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
                   </button>
-                  <span className="px-2.5 font-mono font-bold text-brand-charcoal text-xs min-w-[50px] text-center">
-                    {zoomLevel}%
-                  </span>
-                  <button
-                    onClick={handleZoomIn}
-                    className="p-1.5 rounded hover:bg-gray-200 text-brand-charcoal"
-                    title="Zoom In"
+
+                  {/* Dedicated Reader Link */}
+                  <Link
+                    to="/epaper?lang=en"
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-brand-yellow text-brand-charcoal font-bold text-xs uppercase tracking-wider hover:bg-amber-300 transition-colors shadow-subtle"
                   >
-                    <ZoomIn className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={handleZoomReset}
-                    className="p-1.5 rounded hover:bg-gray-200 text-brand-charcoal border-l border-brand-border ml-1"
-                    title="Reset Zoom (100%)"
-                  >
-                    <RotateCcw className="w-3.5 h-3.5" />
-                  </button>
+                    <BookOpen className="w-4 h-4" />
+                    <span>Full Screen Reader</span>
+                  </Link>
                 </div>
-
-                {/* Fullscreen Toggle */}
-                <button
-                  onClick={toggleFullscreen}
-                  className="p-2 rounded-lg border border-brand-border hover:bg-gray-50 text-brand-charcoal transition-colors"
-                  title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen Reading Mode'}
-                >
-                  {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-                </button>
-
-                {/* Dedicated Reader Link */}
-                <Link
-                  to="/epaper?lang=en"
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-brand-yellow text-brand-charcoal font-bold text-xs uppercase tracking-wider hover:bg-amber-300 transition-colors shadow-subtle"
-                >
-                  <BookOpen className="w-4 h-4" />
-                  <span>Full Screen Reader</span>
-                </Link>
-              </div>
+              ) : (
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Link
+                    to="/archive"
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-brand-blue text-white font-bold text-xs uppercase tracking-wider hover:bg-blue-900 transition-colors shadow-subtle"
+                  >
+                    <Archive className="w-4 h-4" />
+                    <span>Browse Previous Papers</span>
+                  </Link>
+                </div>
+              )}
             </div>
 
             {/* Sandboxed Newspaper Iframe Display - Expanded Wide Broadsheet */}
@@ -678,30 +752,14 @@ export const Home: React.FC = () => {
                   <div className="w-12 h-12 border-4 border-brand-blue border-t-brand-green rounded-full animate-spin" />
                   <div className="text-center">
                     <h4 className="font-headline text-lg font-bold text-brand-charcoal">
-                      Loading English Broadsheet Edition
+                      Checking English Broadsheet Edition
                     </h4>
                     <p className="text-xs text-brand-muted mt-1">
-                      Rendering authentic newspaper broadsheet from Neon PostgreSQL...
+                      Connecting to Neon PostgreSQL broadsheet repository...
                     </p>
                   </div>
                 </div>
-              ) : editionError || !englishEdition ? (
-                <div className="py-24 max-w-md mx-auto text-center p-8 border border-brand-border rounded-xl bg-gray-50">
-                  <AlertCircle className="w-10 h-10 text-amber-500 mx-auto mb-2" />
-                  <h4 className="font-headline text-lg font-bold text-brand-charcoal">
-                    English Edition Not Loaded
-                  </h4>
-                  <p className="text-xs text-brand-muted mt-1 mb-4 leading-relaxed">
-                    {editionError || 'No published English newspaper edition found for today.'}
-                  </p>
-                  <Link
-                    to="/archive"
-                    className="px-4 py-2 rounded bg-brand-blue text-white text-xs font-bold uppercase tracking-wider"
-                  >
-                    Browse Previous Papers
-                  </Link>
-                </div>
-              ) : (
+              ) : isTodayEdition && englishEdition ? (
                 <div
                   className="w-full flex justify-center transition-transform duration-200 origin-top overflow-x-auto"
                   style={{
@@ -746,6 +804,92 @@ export const Home: React.FC = () => {
                         }
                       }}
                     />
+                  </div>
+                </div>
+              ) : (
+                /* Authentic Editorial Not Yet Uploaded Presentation */
+                <div className="py-16 sm:py-20 px-4 sm:px-8 text-center max-w-2xl mx-auto space-y-6">
+                  {/* Status Pill */}
+                  <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-50 border border-amber-300 text-amber-900 text-xs font-black uppercase tracking-wider shadow-xs">
+                    <Clock className="w-3.5 h-3.5 text-amber-700 animate-pulse" />
+                    <span>In Production</span>
+                  </div>
+
+                  {/* Graphic Icon */}
+                  <div className="relative mx-auto w-20 h-20 rounded-2xl bg-blue-50 border border-blue-200 flex items-center justify-center shadow-inner">
+                    <BookOpen className="w-10 h-10 text-brand-blue" />
+                    <span className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-brand-yellow border-2 border-white flex items-center justify-center shadow-xs">
+                      <Sparkles className="w-3.5 h-3.5 text-brand-charcoal" />
+                    </span>
+                  </div>
+
+                  {/* Primary Heading & Good Message */}
+                  <div className="space-y-2">
+                    <h3 className="font-headline text-2xl sm:text-3xl font-black text-brand-charcoal tracking-tight">
+                      Today’s Paper Not Yet Uploaded
+                    </h3>
+                    <p className="text-sm font-semibold text-brand-charcoal">
+                      Our editorial team is currently assembling and formatting today’s broadsheet edition.
+                    </p>
+                    <p className="text-xs text-brand-muted leading-relaxed max-w-md mx-auto">
+                      Today's newspaper edition has not yet been uploaded. All previous editions have been archived and are available to read anytime in the Previous Papers section.
+                    </p>
+                  </div>
+
+                  {/* Previous Edition highlight card */}
+                  {latestPreviousEdition && (
+                    <div className="p-4 rounded-xl bg-gray-50 border border-brand-border text-left flex items-center justify-between gap-4 max-w-md mx-auto">
+                      <div>
+                        <span className="text-[10px] font-black uppercase tracking-wider text-brand-muted block">
+                          Latest Available Previous Edition
+                        </span>
+                        <span className="text-xs font-bold text-brand-charcoal block">
+                          {formatPublicationDate(latestPreviousEdition.publication_date)}
+                        </span>
+                        <span className="text-[11px] text-brand-muted line-clamp-1">
+                          {latestPreviousEdition.title}
+                        </span>
+                      </div>
+                      <Link
+                        to={`/epaper?lang=en&date=${latestPreviousEdition.publication_date}`}
+                        className="px-3 py-1.5 rounded bg-brand-yellow text-brand-charcoal font-bold text-xs uppercase tracking-wider hover:bg-amber-300 transition-colors flex-shrink-0"
+                      >
+                        Read Paper →
+                      </Link>
+                    </div>
+                  )}
+
+                  {/* Action CTA Buttons */}
+                  <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+                    <Link
+                      to="/archive"
+                      className="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg bg-brand-blue text-white font-bold text-xs uppercase tracking-wider hover:bg-blue-900 transition-colors shadow-subtle group"
+                    >
+                      <Archive className="w-4 h-4" />
+                      <span>Browse Previous Papers</span>
+                      <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+                    </Link>
+                    {latestPreviousEdition && (
+                      <Link
+                        to={`/epaper?lang=en&date=${latestPreviousEdition.publication_date}`}
+                        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border border-brand-border text-brand-charcoal font-bold text-xs uppercase tracking-wider hover:bg-gray-100 transition-colors"
+                      >
+                        <BookOpen className="w-4 h-4" />
+                        <span>Read Previous Issue</span>
+                      </Link>
+                    )}
+                  </div>
+
+                  {/* Regional Editions Links */}
+                  <div className="pt-3 border-t border-brand-border flex items-center justify-center gap-3 text-xs text-brand-muted flex-wrap">
+                    <span>Previous regional broadsheets:</span>
+                    <Link to="/epaper?lang=te" className="font-bold text-brand-blue hover:underline font-telugu">
+                      తెలుగు మునుపటి పేపర్లు
+                    </Link>
+                    <span>•</span>
+                    <Link to="/epaper?lang=hi" className="font-bold text-brand-blue hover:underline font-hindi">
+                      हिंदी पिछले संस्करण
+                    </Link>
                   </div>
                 </div>
               )}

@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Archive as ArchiveIcon, Calendar, BookOpen, ChevronRight, Filter, Search } from 'lucide-react';
+import { Archive as ArchiveIcon, Calendar, BookOpen, ChevronRight, Filter, Search, Clock } from 'lucide-react';
 import { Header } from '../components/layout/Header';
 import { Navigation } from '../components/layout/Navigation';
 import { Footer } from '../components/layout/Footer';
 import { LanguageBadge } from '../components/common/LanguageBadge';
 import { newspaperService } from '../services/newspaper';
 import { ArchiveTreeResponse, ArchiveYear, LanguageCode } from '../types';
+import { isTodayDate } from '../utils/date';
 
 export const Archive: React.FC = () => {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -33,6 +34,15 @@ export const Archive: React.FC = () => {
     }
     loadArchive();
   }, [selectedLanguage]);
+
+  // Check if today's edition is already published
+  const hasTodayEdition = Boolean(
+    archiveData?.years?.some((y) =>
+      y.months?.some((m) =>
+        m.days?.some((d) => isTodayDate(d.date))
+      )
+    )
+  );
 
   return (
     <div className="min-h-screen bg-white text-brand-charcoal flex flex-col font-sans">
@@ -105,6 +115,28 @@ export const Archive: React.FC = () => {
             </button>
           </div>
         </div>
+
+        {/* If Today's Edition is Not Yet Uploaded, show reassurance banner */}
+        {!loading && !hasTodayEdition && (
+          <div className="mb-8 p-4 rounded-xl bg-gradient-to-r from-amber-50/80 via-white to-amber-50/50 border border-amber-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-amber-100 flex items-center justify-center flex-shrink-0">
+                <Clock className="w-4 h-4 text-amber-800 animate-pulse" />
+              </div>
+              <div>
+                <p className="text-xs sm:text-sm font-bold text-brand-charcoal">
+                  Today's Edition Not Yet Uploaded
+                </p>
+                <p className="text-xs text-brand-muted">
+                  Our editorial desk is currently assembling today’s broadsheet. In the meantime, browse and read all previous newspaper editions below.
+                </p>
+              </div>
+            </div>
+            <span className="text-[10px] font-black uppercase tracking-wider text-amber-900 bg-amber-100 px-2.5 py-1 rounded-md self-start sm:self-auto flex-shrink-0">
+              In Production
+            </span>
+          </div>
+        )}
 
         {/* Archive Hierarchy Display */}
         {loading ? (
