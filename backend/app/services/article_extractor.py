@@ -68,7 +68,42 @@ def _get_or_create_category(name: str, language: str, db: Session) -> Optional[i
 
 
 # ---------------------------------------------------------------------------
-# Main extraction logic - extracts authentic newspaper cuts
+# LIVE WIRE Ticker extraction logic
+# ---------------------------------------------------------------------------
+
+def extract_live_wire_items(soup: BeautifulSoup) -> List[str]:
+    """
+    Extracts the discrete live wire breaking news items from the newspaper's
+    ticker banner (<div class="ticker">...<div class="run">...</div></div>).
+    """
+    live_wire_items: List[str] = []
+
+    ticker = (
+        soup.find(class_=lambda c: c and "ticker" in c)
+        or soup.find(attrs={"aria-label": "Headlines"})
+        or soup.find(attrs={"aria-label": lambda a: a and ("live" in a.lower() or "headline" in a.lower())})
+    )
+
+    if ticker:
+        run = ticker.find(class_=lambda c: c and "run" in c)
+        raw_text = run.get_text(strip=True) if run else ticker.get_text(strip=True)
+        # Strip 'LIVE WIRE' label prefix
+        cleaned = re.sub(r'^(?:LIVE\s*WIRE|లైవ్\s*వైర్|लाइव\s*वायर)\s*', '', raw_text, flags=re.IGNORECASE).strip()
+        # Split by diamond ◆ (\u25c6), bullet • (\u2022), middle dot · (\u00b7), *, |, or newline
+        tokens = re.split(r'[\u25C6\u2022\u00B7\*\n\|]+', cleaned)
+        seen = set()
+        for tok in tokens:
+            t = tok.strip()
+            # Must be a substantial sentence/headline (>= 12 chars)
+            if len(t) >= 12 and t.lower() not in seen:
+                seen.add(t.lower())
+                live_wire_items.append(t)
+
+    return live_wire_items
+
+
+# ---------------------------------------------------------------------------
+# Main extraction logic - extracts authentic newspaper cuts & LIVE WIRE
 # ---------------------------------------------------------------------------
 
 def extract_articles_from_edition(
@@ -82,10 +117,11 @@ def extract_articles_from_edition(
 ) -> List[Article]:
     """
     Parses broadsheet HTML, extracts the real stories (headlines, decks, kickers,
-    multi-column paragraphs, and sources), formats them as authentic newspaper cuts,
-    and saves them to the articles table.
+    multi-column paragraphs, and sources) and authentic LIVE WIRE ticker items,
+    formats them as authentic newspaper cuts, and saves them to the articles table.
+    Deletes previous articles and Live Wire so the newly uploaded edition's Live Wire takes over.
     """
-    # 1. Delete previous articles to ensure latest news wire is clean
+    # 1. Delete previous articles & Live Wire to ensure latest news wire is clean
     if delete_previous_for_language:
         db.query(Article).filter(Article.language == language).delete(synchronize_session=False)
         db.flush()
@@ -94,6 +130,57 @@ def extract_articles_from_edition(
         db.flush()
 
     soup = BeautifulSoup(html_content, "html.parser")
+
+    # 2. Extract authentic LIVE WIRE ticker items first (before decomposing any elements)
+    live_wire_items = extract_live_wire_items(soup)
+
+    articles_created = []
+    used_in_batch = set()
+
+    # 3. Save LIVE WIRE items first as high-priority breaking news articles
+    if live_wire_items:
+        live_wire_cat_id = _get_or_create_category("LIVE WIRE", language, db)
+        for idx, lw_title in enumerate(live_wire_items):
+            date_str = str(publication_date)
+            base_slug = _slugify(f"live-wire-{lw_title[:45]}-{date_str}")
+            slug = _unique_slug(base_slug, db, used_in_batch)
+
+            first_letter = lw_title[0] if lw_title else "L"
+            rest_of_title = lw_title[1:] if len(lw_title) > 1 else ""
+
+            lw_cut_html = f"""<div class="newspaper-cut" data-section="LIVE WIRE" data-kicker="LIVE WIRE" data-sources="Official Broadsheet Wire Ticker [LIVE]" data-sheet="sheet-1" data-page="1">
+  <div class="newspaper-cut-header">
+    <div class="newspaper-cut-section" style="background:#b3261e;color:#fff;padding:2px 8px;font-weight:900;">LIVE WIRE</div>
+    <div class="newspaper-cut-page">Live Wire Ticker</div>
+    <div class="newspaper-cut-rule"></div>
+  </div>
+  <p class="newspaper-cut-eyebrow">BREAKING TECHNOLOGY WIRE</p>
+  <h1 class="newspaper-cut-headline">{html.escape(lw_title)}</h1>
+  <p class="newspaper-cut-deck">{html.escape(lw_title)}</p>
+  <div class="newspaper-cut-body">
+    <p><span class="newspaper-cut-dropcap">{first_letter}</span>{html.escape(rest_of_title)}. Official Live Wire briefing published in the daily AI Newspaper broadsheet edition.</p>
+  </div>
+  <div class="newspaper-cut-sources">
+    <span class="sources-text">Rise ’n’ Shine Live Wire Correspondent Network</span>
+    <span class="reported-badge">LIVE WIRE</span>
+  </div>
+</div>"""
+
+            art = Article(
+                edition_id   = edition_id,
+                title        = lw_title,
+                slug         = slug,
+                language     = language,
+                description  = lw_title[:300],
+                content      = lw_cut_html,
+                category_id  = live_wire_cat_id,
+                status       = "published",
+                is_breaking  = True,  # Genuine LIVE WIRE breaking item!
+                is_featured  = True,
+            )
+            db.add(art)
+            db.flush()
+            articles_created.append(art)
 
     # Decompose global non-story elements
     for tag in soup.find_all(["nav", "footer"]):
@@ -223,8 +310,6 @@ def extract_articles_from_edition(
                 })
 
     top_stories = extracted_stories[:max_articles]
-    articles_created = []
-    used_in_batch = set()
 
     for idx, story in enumerate(top_stories):
         title = story["title"]
@@ -278,7 +363,8 @@ def extract_articles_from_edition(
         base_slug = _slugify(f"{title}-{date_str}")
         slug = _unique_slug(base_slug, db, used_in_batch)
 
-        is_breaking = True  # Every headline extracted from our submitted newspaper HTML is a headline for breaking news
+        # If live_wire_items exist, they are the primary breaking news; otherwise top 4 stories are breaking
+        is_breaking = False if live_wire_items else (idx < 4)
         is_featured = (idx < 4)
 
         article = Article(

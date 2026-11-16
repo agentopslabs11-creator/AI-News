@@ -85,11 +85,14 @@ async def on_startup():
 
 @app.get("/", tags=["Health"])
 @app.get("/api", tags=["Health"])
+@app.get("/api/", tags=["Health"])
 def root_api():
     return {"status": "online", "message": "Rise 'n' Shine API", "database": "postgresql"}
 
 @app.get("/health", tags=["Health"])
+@app.get("/health/", tags=["Health"])
 @app.get("/api/health", tags=["Health"])
+@app.get("/api/health/", tags=["Health"])
 async def health_check():
     """Live diagnostic endpoint verifying database connectivity and admin accounts."""
     db_connected = False

@@ -3,11 +3,11 @@
   "rewrites": [
     {
       "source": "/api",
-      "destination": "/api/index.py"
+      "destination": "https://backend-rho-drab-16.vercel.app/api"
     },
     {
       "source": "/api/(.*)",
-      "destination": "/api/index.py"
+      "destination": "https://backend-rho-drab-16.vercel.app/api/$1"
     },
     {
       "source": "/((?!api/).*)",
