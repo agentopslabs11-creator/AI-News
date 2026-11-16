@@ -21,8 +21,15 @@ from app.services.article_extractor import extract_articles_from_edition
 
 router = APIRouter(prefix="/admin/editions", tags=["Admin Editions"])
 
-UPLOADS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "uploads", "editions")
-os.makedirs(UPLOADS_DIR, exist_ok=True)
+if os.environ.get("VERCEL"):
+    UPLOADS_DIR = os.path.join("/tmp", "uploads", "editions")
+else:
+    UPLOADS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "uploads", "editions")
+
+try:
+    os.makedirs(UPLOADS_DIR, exist_ok=True)
+except Exception as e:
+    print(f"Notice: UPLOADS_DIR ({UPLOADS_DIR}) init note: {e}")
 
 @router.post("/validate", response_model=EditionValidationResponse)
 async def validate_html_edition(

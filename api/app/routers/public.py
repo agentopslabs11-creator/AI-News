@@ -20,7 +20,10 @@ from app.schemas.category import CategoryResponse
 
 router = APIRouter(prefix="/public", tags=["Public News & Reader"])
 
-UPLOADS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "uploads", "editions")
+if os.environ.get("VERCEL"):
+    UPLOADS_DIR = os.path.join("/tmp", "uploads", "editions")
+else:
+    UPLOADS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "uploads", "editions")
 
 def _serve_edition_pdf(edition: Optional[NewspaperEdition]):
     if not edition:

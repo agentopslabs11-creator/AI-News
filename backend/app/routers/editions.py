@@ -1,3 +1,6 @@
+import os
+import re
+import base64
 from datetime import date, datetime, timezone
 from typing import Optional, List, Any
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, status, Query
@@ -18,22 +21,56 @@ from app.services.article_extractor import extract_articles_from_edition
 
 router = APIRouter(prefix="/admin/editions", tags=["Admin Editions"])
 
+if os.environ.get("VERCEL"):
+    UPLOADS_DIR = os.path.join("/tmp", "uploads", "editions")
+else:
+    UPLOADS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "uploads", "editions")
+
+try:
+    os.makedirs(UPLOADS_DIR, exist_ok=True)
+except Exception as e:
+    print(f"Notice: UPLOADS_DIR ({UPLOADS_DIR}) init note: {e}")
+
 @router.post("/validate", response_model=EditionValidationResponse)
 async def validate_html_edition(
     file: UploadFile = File(...),
     current_admin: Admin = Depends(get_current_admin)
 ):
     """
-    Pre-validates and tests uploaded newspaper HTML before saving to database.
-    Checks file size, UTF-8 encoding, removes dangerous tags, and reports warnings.
+    Pre-validates and tests uploaded newspaper HTML or PDF before saving to database.
+    Checks file size, UTF-8 encoding or PDF format, and reports warnings.
     """
-    if not file.filename.lower().endswith((".html", ".htm")):
+    filename_lower = file.filename.lower()
+    if not filename_lower.endswith((".html", ".htm", ".pdf")):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Only valid .html or .htm files are permitted for newspaper editions."
+            detail="Only valid .html, .htm, or .pdf files are permitted for newspaper editions."
         )
 
     content_bytes = await file.read()
+
+    # Handle PDF broadsheets
+    if filename_lower.endswith(".pdf"):
+        if len(content_bytes) == 0:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Uploaded PDF file is empty.")
+        if not content_bytes.startswith(b"%PDF-"):
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Invalid PDF file format. Missing standard %PDF header.")
+        if len(content_bytes) > settings.MAX_UPLOAD_SIZE_MB * 1024 * 1024 * 5:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"PDF size exceeds maximum allowed limit of {settings.MAX_UPLOAD_SIZE_MB * 5} MB.")
+
+        clean_name = file.filename.rsplit(".", 1)[0].replace("-", " ").replace("_", " ").title()
+        return {
+            "valid": True,
+            "title": clean_name,
+            "headings_count": 0,
+            "sample_headings": ["Official PDF Broadsheet Document"],
+            "external_images_count": 0,
+            "content_size_bytes": len(content_bytes),
+            "sanitized": True,
+            "warning": None
+        }
+
+    # Handle HTML broadsheets
     try:
         sanitized_html, meta = HTMLProcessor.validate_and_sanitize(
             content_bytes,
@@ -67,6 +104,84 @@ def _parse_bool_flag(val: Any) -> bool:
         return val.lower().strip() in ("true", "1", "yes", "on", "confirm")
     return bool(val)
 
+def _generate_pdf_html(title: str, language: str, publication_date: date, original_filename: str, raw_bytes: bytes) -> str:
+    b64_pdf = base64.b64encode(raw_bytes).decode("utf-8")
+    pdf_data_uri = f"data:application/pdf;base64,{b64_pdf}"
+    pdf_stream_url = f"/api/public/editions/{language}/{publication_date}/pdf"
+
+    return f"""<!DOCTYPE html>
+<html lang="{language}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{title}</title>
+  <style>
+    html, body {{
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      min-height: 100vh;
+      background: #f1f5f9;
+      overflow-x: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }}
+    .pdf-toolbar {{
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 16px;
+      background: #0f172a;
+      color: #fff;
+      font-size: 13px;
+      font-weight: 600;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }}
+    .pdf-toolbar a {{
+      color: #38bdf8;
+      text-decoration: none;
+      padding: 5px 12px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      transition: background 0.2s;
+    }}
+    .pdf-toolbar a:hover {{
+      background: rgba(255,255,255,0.25);
+    }}
+    .pdf-container {{
+      width: 100%;
+      height: calc(100vh - 48px);
+      min-height: 850px;
+    }}
+    object, embed, iframe {{
+      width: 100%;
+      height: 100%;
+      border: 0;
+      min-height: 850px;
+    }}
+  </style>
+</head>
+<body>
+  <div class="pdf-toolbar">
+    <span>📄 {title}</span>
+    <div style="display:flex;gap:8px;">
+      <a href="{pdf_stream_url}" download="{original_filename}">Download PDF ↓</a>
+      <a href="{pdf_stream_url}" target="_blank">Open Full Screen ↗</a>
+    </div>
+  </div>
+  <div class="pdf-container">
+    <object data="{pdf_data_uri}" type="application/pdf" width="100%" height="100%">
+      <embed src="{pdf_data_uri}" type="application/pdf" width="100%" height="100%" />
+      <iframe src="{pdf_stream_url}" width="100%" height="100%">
+        <p>Your browser does not support inline PDFs. <a href="{pdf_stream_url}" target="_blank">Click here to download and view the broadsheet PDF.</a></p>
+      </iframe>
+    </object>
+  </div>
+</body>
+</html>"""
+
 @router.post("/upload", response_model=EditionListItem)
 async def upload_newspaper_edition(
     file: UploadFile = File(...),
@@ -81,14 +196,14 @@ async def upload_newspaper_edition(
     current_admin: Admin = Depends(get_current_admin)
 ):
     """
-    Uploads and stores a daily newspaper edition directly into Neon PostgreSQL.
-    Validates UTF-8, sanitizes HTML, enforces unique date+language constraint,
-    and supports automatic replacement and update of latest news.
+    Uploads and stores a daily newspaper edition (HTML or PDF) directly into Neon PostgreSQL.
+    Enforces unique date+language constraint, supports automatic replacement and update of latest news.
     """
-    if not file.filename.lower().endswith((".html", ".htm")):
+    filename_lower = file.filename.lower()
+    if not filename_lower.endswith((".html", ".htm", ".pdf")):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Only valid .html or .htm files are permitted for newspaper editions."
+            detail="Only valid .html, .htm, or .pdf files are permitted for newspaper editions."
         )
 
     # Check for existing edition on this date for this language
@@ -109,15 +224,35 @@ async def upload_newspaper_edition(
             }
         )
 
-    # Read and sanitize HTML
     raw_bytes = await file.read()
-    try:
-        sanitized_html, meta = HTMLProcessor.validate_and_sanitize(
-            raw_bytes,
-            max_size_mb=settings.MAX_UPLOAD_SIZE_MB
-        )
-    except HTMLValidationError as e:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
+
+    # Process either PDF or HTML
+    if filename_lower.endswith(".pdf"):
+        if len(raw_bytes) == 0:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Uploaded PDF file is empty.")
+        if not raw_bytes.startswith(b"%PDF-"):
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Invalid PDF file format. Missing %PDF header.")
+
+        # Save PDF to disk
+        pdf_filename = f"{language}_{publication_date}.pdf"
+        disk_path = os.path.join(UPLOADS_DIR, pdf_filename)
+        try:
+            with open(disk_path, "wb") as f:
+                f.write(raw_bytes)
+        except Exception as e:
+            print(f"Warning saving PDF to disk: {e}")
+
+        sanitized_html = _generate_pdf_html(title, language, publication_date, file.filename, raw_bytes)
+        content_size_val = len(raw_bytes)
+    else:
+        try:
+            sanitized_html, meta = HTMLProcessor.validate_and_sanitize(
+                raw_bytes,
+                max_size_mb=settings.MAX_UPLOAD_SIZE_MB
+            )
+            content_size_val = meta["content_size_bytes"]
+        except HTMLValidationError as e:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
 
     now = datetime.now(timezone.utc)
     published_time = now if status_choice == "published" else None
@@ -128,7 +263,7 @@ async def upload_newspaper_edition(
         existing.description = description
         existing.original_filename = file.filename
         existing.html_content = sanitized_html
-        existing.content_size = meta["content_size_bytes"]
+        existing.content_size = content_size_val
         existing.status = status_choice
         if status_choice == "published":
             existing.published_at = now
@@ -139,10 +274,10 @@ async def upload_newspaper_edition(
 
         log_admin_activity(
             db, current_admin.id, current_admin.email,
-            action="REPLACE_EDITION_HTML",
+            action="REPLACE_EDITION_FILE",
             entity_type="edition",
             entity_id=str(edition.id),
-            details=f"Replaced HTML and updated latest news for edition ID {edition.id} ({language.upper()} - {publication_date})"
+            details=f"Replaced broadsheet file and updated latest news for edition ID {edition.id} ({language.upper()} - {publication_date})"
         )
     else:
         # Create new edition
@@ -153,7 +288,7 @@ async def upload_newspaper_edition(
             description=description,
             original_filename=file.filename,
             html_content=sanitized_html,
-            content_size=meta["content_size_bytes"],
+            content_size=content_size_val,
             status=status_choice,
             created_by=current_admin.id,
             published_at=published_time
@@ -170,8 +305,8 @@ async def upload_newspaper_edition(
             details=f"Uploaded {edition.title} ({language.upper()}, {publication_date}, status: {status_choice})"
         )
 
-    # ── Auto-extract articles when edition is published (deletes previous latest news) ──
-    if edition.status == "published":
+    # ── Auto-extract articles when HTML edition is published (deletes previous latest news) ──
+    if edition.status == "published" and not filename_lower.endswith(".pdf"):
         try:
             extracted = extract_articles_from_edition(
                 edition_id=edition.id,
@@ -208,19 +343,39 @@ async def replace_edition_html(
     if not edition:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Edition not found.")
 
-    if not file.filename.lower().endswith((".html", ".htm")):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Only .html or .htm files are permitted.")
+    filename_lower = file.filename.lower()
+    if not filename_lower.endswith((".html", ".htm", ".pdf")):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Only .html, .htm, or .pdf files are permitted.")
 
     raw_bytes = await file.read()
-    try:
-        sanitized_html, meta = HTMLProcessor.validate_and_sanitize(raw_bytes, settings.MAX_UPLOAD_SIZE_MB)
-    except HTMLValidationError as e:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
+    if filename_lower.endswith(".pdf"):
+        if len(raw_bytes) == 0:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Uploaded PDF file is empty.")
+        if not raw_bytes.startswith(b"%PDF-"):
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Invalid PDF file format. Missing %PDF header.")
+
+        # Save PDF to disk
+        pdf_filename = f"{edition.language}_{edition.publication_date}.pdf"
+        disk_path = os.path.join(UPLOADS_DIR, pdf_filename)
+        try:
+            with open(disk_path, "wb") as f:
+                f.write(raw_bytes)
+        except Exception as e:
+            print(f"Warning saving PDF to disk: {e}")
+
+        sanitized_html = _generate_pdf_html(edition.title, edition.language, edition.publication_date, file.filename, raw_bytes)
+        content_size_val = len(raw_bytes)
+    else:
+        try:
+            sanitized_html, meta = HTMLProcessor.validate_and_sanitize(raw_bytes, settings.MAX_UPLOAD_SIZE_MB)
+            content_size_val = meta["content_size_bytes"]
+        except HTMLValidationError as e:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
 
     now = datetime.now(timezone.utc)
     edition.html_content = sanitized_html
     edition.original_filename = file.filename
-    edition.content_size = meta["content_size_bytes"]
+    edition.content_size = content_size_val
     edition.updated_at = now
     if edition.status == "published":
         edition.published_at = now

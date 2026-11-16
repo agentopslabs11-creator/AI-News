@@ -1,6 +1,10 @@
+import os
+import re
+import base64
 from datetime import date
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import FileResponse, Response
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import desc, or_
 
@@ -15,6 +19,70 @@ from app.schemas.video import VideoResponse
 from app.schemas.category import CategoryResponse
 
 router = APIRouter(prefix="/public", tags=["Public News & Reader"])
+
+if os.environ.get("VERCEL"):
+    UPLOADS_DIR = os.path.join("/tmp", "uploads", "editions")
+else:
+    UPLOADS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "uploads", "editions")
+
+def _serve_edition_pdf(edition: Optional[NewspaperEdition]):
+    if not edition:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Newspaper edition not found.")
+
+    pdf_filename = f"{edition.language}_{edition.publication_date}.pdf"
+    file_path = os.path.join(UPLOADS_DIR, pdf_filename)
+
+    # 1. Check if PDF file exists on disk
+    if os.path.exists(file_path):
+        return FileResponse(
+            file_path,
+            media_type="application/pdf",
+            filename=edition.original_filename or pdf_filename,
+            headers={"Content-Disposition": f'inline; filename="{edition.original_filename or pdf_filename}"'}
+        )
+
+    # 2. Extract base64 embedded PDF from html_content if available
+    if edition.html_content and "data:application/pdf;base64," in edition.html_content:
+        match = re.search(r"data:application/pdf;base64,([A-Za-z0-9+/=]+)", edition.html_content)
+        if match:
+            try:
+                pdf_bytes = base64.b64decode(match.group(1))
+                return Response(
+                    content=pdf_bytes,
+                    media_type="application/pdf",
+                    headers={"Content-Disposition": f'inline; filename="{edition.original_filename or pdf_filename}"'}
+                )
+            except Exception as e:
+                print(f"Error decoding base64 PDF: {e}")
+
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="This edition was published as HTML or the PDF file is not available."
+    )
+
+@router.get("/editions/{edition_id}/pdf")
+async def get_edition_pdf_by_id(
+    edition_id: int,
+    db: Session = Depends(get_db)
+):
+    """Streams the raw PDF broadsheet file for a specific edition ID."""
+    edition = db.query(NewspaperEdition).filter(NewspaperEdition.id == edition_id).first()
+    return _serve_edition_pdf(edition)
+
+@router.get("/editions/{language}/{pub_date}/pdf")
+async def get_edition_pdf_by_date(
+    language: str,
+    pub_date: date,
+    db: Session = Depends(get_db)
+):
+    """Streams the raw PDF broadsheet file for a language and publication date."""
+    if language not in ("en", "te", "hi"):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported language.")
+    edition = db.query(NewspaperEdition).filter(
+        NewspaperEdition.language == language,
+        NewspaperEdition.publication_date == pub_date
+    ).first()
+    return _serve_edition_pdf(edition)
 
 @router.get("/editions", response_model=List[EditionListItem])
 async def get_published_editions(
@@ -143,7 +211,17 @@ async def get_breaking_news(
     ).order_by(desc(NewspaperEdition.publication_date), desc(NewspaperEdition.id)).first()
 
     if latest_edition:
-        # Retrieve all articles extracted directly from this submitted HTML broadsheet
+        # Prioritize exact LIVE WIRE items extracted from this newly published broadsheet
+        live_wire_articles = db.query(Article).filter(
+            Article.edition_id == latest_edition.id,
+            Article.is_breaking == True,
+            Article.status == "published"
+        ).order_by(Article.id.asc()).limit(limit).all()
+
+        if live_wire_articles:
+            return live_wire_articles
+
+        # Fallback to all stories extracted directly from this broadsheet
         edition_articles = db.query(Article).filter(
             Article.edition_id == latest_edition.id,
             Article.status == "published"
@@ -152,11 +230,18 @@ async def get_breaking_news(
         if edition_articles:
             return edition_articles
 
-    # 2. Fallback strictly to published articles of this language from our editions
+    # 2. Fallback strictly to breaking articles of this language from our editions
     articles = db.query(Article).filter(
         Article.status == "published",
-        Article.language == target_lang
+        Article.language == target_lang,
+        Article.is_breaking == True
     ).order_by(desc(Article.id)).limit(limit).all()
+
+    if not articles:
+        articles = db.query(Article).filter(
+            Article.status == "published",
+            Article.language == target_lang
+        ).order_by(desc(Article.id)).limit(limit).all()
 
     return articles
 
