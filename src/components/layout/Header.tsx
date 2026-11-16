@@ -23,20 +23,20 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <header className="w-full bg-white border-b border-brand-border relative">
       {/* Top Utility Bar */}
-      <div className="border-b border-brand-border bg-white text-xs text-brand-muted py-2 px-4 sm:px-8">
-        <div className="w-full flex items-center justify-between gap-4">
+      <div className="border-b border-brand-border bg-white text-xs text-brand-muted py-1.5 sm:py-2 px-3 sm:px-8">
+        <div className="w-full flex items-center justify-between gap-2 sm:gap-4">
           <div className="flex items-center gap-4">
             <span className="hidden md:inline italic text-gray-500">
               "News That Matters. Knowledge That Empowers."
             </span>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 ml-auto">
             {/* Direct Language Switcher Pills */}
             <div className="flex items-center bg-gray-50 border border-brand-border rounded-full p-0.5">
               <Link
                 to="/"
-                className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold transition-colors ${
+                className={`px-2 sm:px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-bold transition-colors ${
                   currentLanguage === 'en'
                     ? 'bg-brand-blue text-white shadow-sm'
                     : 'text-brand-charcoal hover:bg-gray-200/60'
@@ -47,7 +47,7 @@ export const Header: React.FC<HeaderProps> = ({
               </Link>
               <Link
                 to="/epaper?lang=te"
-                className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold transition-colors font-telugu ${
+                className={`px-2 sm:px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-bold transition-colors font-telugu ${
                   currentLanguage === 'te'
                     ? 'bg-brand-green text-brand-charcoal shadow-sm'
                     : 'text-brand-charcoal hover:bg-gray-200/60'
@@ -58,7 +58,7 @@ export const Header: React.FC<HeaderProps> = ({
               </Link>
               <Link
                 to="/epaper?lang=hi"
-                className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold transition-colors font-hindi ${
+                className={`px-2 sm:px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-bold transition-colors font-hindi ${
                   currentLanguage === 'hi'
                     ? 'bg-brand-yellow text-brand-charcoal shadow-sm'
                     : 'text-brand-charcoal hover:bg-gray-200/60'
@@ -73,10 +73,10 @@ export const Header: React.FC<HeaderProps> = ({
             {isAuthenticated ? (
               <Link
                 to="/admin"
-                className="inline-flex items-center gap-1.5 px-3 py-1 rounded bg-brand-blue text-white text-[11px] font-bold hover:bg-brand-blue/90 transition-all shadow-sm"
+                className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded bg-brand-blue text-white text-[10px] sm:text-[11px] font-bold hover:bg-brand-blue/90 transition-all shadow-sm"
               >
                 <Shield className="w-3.5 h-3.5 text-brand-green" />
-                <span>Admin Hub</span>
+                <span className="hidden xs:inline">Admin Hub</span>
               </Link>
             ) : (
               <Link
@@ -92,18 +92,18 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
 
       {/* Main Masthead Banner - Centered in Middle like The Times of India */}
-      <div className="w-full px-4 sm:px-8 py-4 sm:py-6 relative flex items-center justify-center">
+      <div className="w-full px-3 sm:px-8 py-2.5 sm:py-5 relative flex items-center justify-center min-h-[68px] sm:min-h-[88px]">
         {/* Mobile menu trigger */}
         <button
           onClick={onToggleMobileNav}
-          className="lg:hidden absolute left-4 sm:left-8 top-1/2 -translate-y-1/2 p-2 rounded-lg border border-brand-border text-brand-charcoal hover:bg-gray-50 transition-colors z-10"
+          className="lg:hidden absolute left-3 sm:left-6 top-1/2 -translate-y-1/2 p-2 rounded-lg border border-brand-border text-brand-charcoal hover:bg-gray-50 transition-colors z-10 touch-manipulation"
           aria-label="Toggle navigation drawer"
         >
           {mobileNavOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
         </button>
 
         {/* Brand in Middle with Date below logo, inspired by The Times of India referral */}
-        <div className="flex justify-center items-center py-1">
+        <div className="flex justify-center items-center py-1 pl-8 sm:pl-10 lg:pl-0">
           <RiseShineLogo size="md" layout="middle-lockup" showDate={true} />
         </div>
       </div>

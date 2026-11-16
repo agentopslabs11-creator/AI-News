@@ -322,13 +322,13 @@ export const Home: React.FC = () => {
 
       <main className="flex-1 w-full">
         {/* Edition Quick Switcher Bar */}
-        <section className="bg-gray-50 border-b border-brand-border py-2 px-4 sm:px-8">
-          <div className="w-full flex items-center justify-between text-xs">
+        <section className="bg-gray-50 border-b border-brand-border py-2 px-3 sm:px-8">
+          <div className="w-full flex flex-col md:flex-row md:items-center justify-between gap-2.5 text-xs">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="font-bold text-brand-blue uppercase tracking-wider text-[11px]">
                 Edition:
               </span>
-              <span className="font-extrabold text-brand-charcoal bg-white px-2 py-0.5 rounded border border-brand-border">
+              <span className="font-extrabold text-brand-charcoal bg-white px-2 py-0.5 rounded border border-brand-border text-[11px]">
                 English (Default)
               </span>
               {isTodayEdition ? (
@@ -350,7 +350,7 @@ export const Home: React.FC = () => {
               </button>
             </div>
 
-            <div className="flex items-center gap-3 text-xs flex-wrap">
+            <div className="flex items-center gap-2.5 sm:gap-3 text-xs flex-wrap">
               <a
                 href="https://chat.whatsapp.com/EfN85yaYDu6BKlK409qXbA"
                 target="_blank"
@@ -378,70 +378,14 @@ export const Home: React.FC = () => {
 
         {/* 
           2. STARTING TOP SECTION
-          - Middle: Video
-          - Sides: 3 ads on left, 3 ads on right (managed by admin)
+          - Middle: Video (order-1 on mobile so it displays first)
+          - Sides: Left ads (order-2 on mobile), Right ads (order-3 on mobile)
         */}
-        <section className="w-full bg-white py-6 border-b border-brand-border">
-          <div className="w-full px-4 sm:px-6 lg:px-8">
+        <section className="w-full bg-white py-4 sm:py-6 border-b border-brand-border">
+          <div className="w-full px-3 sm:px-6 lg:px-8">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-              {/* LEFT SIDE: 3 Advertisements */}
-              <div className="lg:col-span-3 space-y-4">
-                <div className="flex items-center justify-between pb-1 border-b border-brand-border">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-brand-muted flex items-center gap-1">
-                    <Megaphone className="w-3 h-3 text-brand-blue" />
-                    <span>Sponsored Displays</span>
-                  </span>
-                  <span className="text-[9px] font-bold text-brand-blue bg-blue-50 px-1.5 py-0.2 rounded border border-blue-200">
-                    Left Desk
-                  </span>
-                </div>
-
-                {loading && leftAds.length === 0 ? (
-                  [1, 2, 3].map((i) => (
-                    <div key={`skel-left-${i}`} className="border border-brand-border rounded-xl p-2.5 bg-white animate-pulse">
-                      <div className="aspect-[16/9] w-full rounded-lg bg-gray-100 mb-2 flex items-center justify-center">
-                        <ImageIcon className="w-5 h-5 text-gray-300" />
-                      </div>
-                      <div className="h-3.5 bg-gray-200 rounded w-3/4 mb-1.5" />
-                      <div className="h-3 bg-gray-100 rounded w-1/2" />
-                    </div>
-                  ))
-                ) : (
-                  displayLeftAds.map((ad, idx) => (
-                    <a
-                      key={`left-ad-${ad.id || idx}`}
-                      href={ad.link_url || '#'}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="group block border border-brand-border rounded-xl p-2.5 bg-white hover:border-brand-blue hover:shadow-editorial transition-all"
-                    >
-                      <div className="relative aspect-[16/9] w-full rounded-lg overflow-hidden bg-gray-100 mb-2 border border-brand-border">
-                        <img
-                          src={ad.image_url || undefined}
-                          alt={ad.title}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).src =
-                              'https://images.unsplash.com/photo-1635070041078-e363dbe005cb?auto=format&fit=crop&w=600&q=80';
-                          }}
-                        />
-                        <span className="absolute top-1.5 left-1.5 text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded bg-black/70 text-white backdrop-blur-xs">
-                          Ad #{idx + 1}
-                        </span>
-                      </div>
-                      <div className="flex items-start justify-between gap-1">
-                        <h4 className="font-bold text-xs text-brand-charcoal group-hover:text-brand-blue line-clamp-2 leading-snug">
-                          {ad.title}
-                        </h4>
-                        <ExternalLink className="w-3 h-3 text-brand-muted group-hover:text-brand-blue flex-shrink-0 mt-0.5" />
-                      </div>
-                    </a>
-                  ))
-                )}
-              </div>
-
-              {/* MIDDLE: Featured News Video */}
-              <div className="lg:col-span-6 space-y-4">
+              {/* MIDDLE: Featured News Video (Order-1 on mobile, Order-2 on desktop) */}
+              <div className="order-1 lg:order-2 lg:col-span-6 space-y-4">
                 <div className="flex items-center justify-between pb-1 border-b border-brand-border">
                   <span className="text-[10px] font-black uppercase tracking-widest text-brand-blue flex items-center gap-1.5">
                     <Play className="w-3 h-3 fill-brand-blue text-brand-blue" />
@@ -512,7 +456,7 @@ export const Home: React.FC = () => {
                     </div>
                   </div>
                 ) : (
-                  <div className="border border-brand-border rounded-2xl overflow-hidden bg-gradient-to-b from-gray-50/90 via-white to-gray-50/50 shadow-subtle p-6 sm:p-8 flex flex-col items-center justify-center text-center space-y-4 min-h-[380px]">
+                  <div className="border border-brand-border rounded-2xl overflow-hidden bg-gradient-to-b from-gray-50/90 via-white to-gray-50/50 shadow-subtle p-6 sm:p-8 flex flex-col items-center justify-center text-center space-y-4 min-h-[340px] sm:min-h-[380px]">
                     {/* Scheduled Pill */}
                     <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-50 border border-amber-300 text-amber-900 text-xs font-black uppercase tracking-wider shadow-xs">
                       <Clock className="w-3.5 h-3.5 text-amber-700 animate-pulse" />
@@ -521,11 +465,11 @@ export const Home: React.FC = () => {
 
                     {/* Visual Media Graphic */}
                     <div className="relative my-2">
-                      <div className="w-20 h-20 rounded-2xl bg-blue-50 border border-blue-200 flex items-center justify-center shadow-inner">
-                        <Tv className="w-10 h-10 text-brand-blue" />
+                      <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-blue-50 border border-blue-200 flex items-center justify-center shadow-inner">
+                        <Tv className="w-8 h-8 sm:w-10 sm:h-10 text-brand-blue" />
                       </div>
-                      <div className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-brand-yellow border-2 border-white flex items-center justify-center shadow-xs">
-                        <Clock className="w-3.5 h-3.5 text-brand-charcoal" />
+                      <div className="absolute -bottom-1 -right-1 w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-brand-yellow border-2 border-white flex items-center justify-center shadow-xs">
+                        <Clock className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-brand-charcoal" />
                       </div>
                     </div>
 
@@ -546,9 +490,9 @@ export const Home: React.FC = () => {
                     <div className="pt-1">
                       <Link
                         to="/videos"
-                        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-blue text-white font-bold text-xs uppercase tracking-wider hover:bg-blue-900 transition-colors shadow-subtle group"
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-blue text-white font-bold text-xs uppercase tracking-wider hover:bg-blue-900 transition-colors shadow-subtle group text-center"
                       >
-                        <Play className="w-3.5 h-3.5 fill-white" />
+                        <Play className="w-3.5 h-3.5 fill-white flex-shrink-0" />
                         <span>Watch Previous Videos in Video Desk →</span>
                       </Link>
                     </div>
@@ -566,7 +510,7 @@ export const Home: React.FC = () => {
                 <div className="text-center pt-1">
                   <button
                     onClick={scrollToNewspaper}
-                    className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-brand-green text-brand-charcoal font-black text-xs uppercase tracking-wider hover:bg-lime-400 transition-all shadow-subtle group"
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-brand-green text-brand-charcoal font-black text-xs uppercase tracking-wider hover:bg-lime-400 transition-all shadow-subtle group touch-manipulation"
                   >
                     <span>Scroll to Read English Newspaper</span>
                     <ChevronDown className="w-4 h-4 group-hover:translate-y-0.5 transition-transform" />
@@ -574,9 +518,67 @@ export const Home: React.FC = () => {
                 </div>
               </div>
 
-              {/* RIGHT SIDE: 3 Advertisements */}
-              <div className="lg:col-span-3 space-y-4">
-                <div className="flex items-center justify-between pb-1 border-b border-brand-border">
+              {/* LEFT SIDE: 3 Advertisements (Order-2 on mobile, Order-1 on desktop) */}
+              <div className="order-2 lg:order-1 lg:col-span-3">
+                <div className="flex items-center justify-between pb-1 border-b border-brand-border mb-3">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-brand-muted flex items-center gap-1">
+                    <Megaphone className="w-3 h-3 text-brand-blue" />
+                    <span>Sponsored Displays</span>
+                  </span>
+                  <span className="text-[9px] font-bold text-brand-blue bg-blue-50 px-1.5 py-0.2 rounded border border-blue-200">
+                    Left Desk
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-1 gap-3 sm:gap-4">
+                  {loading && leftAds.length === 0 ? (
+                    [1, 2, 3].map((i) => (
+                      <div key={`skel-left-${i}`} className="border border-brand-border rounded-xl p-2.5 bg-white animate-pulse">
+                        <div className="aspect-[16/9] w-full rounded-lg bg-gray-100 mb-2 flex items-center justify-center">
+                          <ImageIcon className="w-5 h-5 text-gray-300" />
+                        </div>
+                        <div className="h-3.5 bg-gray-200 rounded w-3/4 mb-1.5" />
+                        <div className="h-3 bg-gray-100 rounded w-1/2" />
+                      </div>
+                    ))
+                  ) : (
+                    displayLeftAds.map((ad, idx) => (
+                      <a
+                        key={`left-ad-${ad.id || idx}`}
+                        href={ad.link_url || '#'}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="group block border border-brand-border rounded-xl p-2.5 bg-white hover:border-brand-blue hover:shadow-editorial transition-all"
+                      >
+                        <div className="relative aspect-[16/9] w-full rounded-lg overflow-hidden bg-gray-100 mb-2 border border-brand-border">
+                          <img
+                            src={ad.image_url || undefined}
+                            alt={ad.title}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src =
+                                'https://images.unsplash.com/photo-1635070041078-e363dbe005cb?auto=format&fit=crop&w=600&q=80';
+                            }}
+                          />
+                          <span className="absolute top-1.5 left-1.5 text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded bg-black/70 text-white backdrop-blur-xs">
+                            Ad #{idx + 1}
+                          </span>
+                        </div>
+                        <div className="flex items-start justify-between gap-1">
+                          <h4 className="font-bold text-xs text-brand-charcoal group-hover:text-brand-blue line-clamp-2 leading-snug">
+                            {ad.title}
+                          </h4>
+                          <ExternalLink className="w-3 h-3 text-brand-muted group-hover:text-brand-blue flex-shrink-0 mt-0.5" />
+                        </div>
+                      </a>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {/* RIGHT SIDE: 3 Advertisements (Order-3 on mobile and desktop) */}
+              <div className="order-3 lg:order-3 lg:col-span-3">
+                <div className="flex items-center justify-between pb-1 border-b border-brand-border mb-3">
                   <span className="text-[10px] font-black uppercase tracking-widest text-brand-muted flex items-center gap-1">
                     <Megaphone className="w-3 h-3 text-brand-blue" />
                     <span>Commercial Network</span>
@@ -586,48 +588,50 @@ export const Home: React.FC = () => {
                   </span>
                 </div>
 
-                {loading && rightAds.length === 0 ? (
-                  [1, 2, 3].map((i) => (
-                    <div key={`skel-right-${i}`} className="border border-brand-border rounded-xl p-2.5 bg-white animate-pulse">
-                      <div className="aspect-[16/9] w-full rounded-lg bg-gray-100 mb-2 flex items-center justify-center">
-                        <ImageIcon className="w-5 h-5 text-gray-300" />
+                <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-1 gap-3 sm:gap-4">
+                  {loading && rightAds.length === 0 ? (
+                    [1, 2, 3].map((i) => (
+                      <div key={`skel-right-${i}`} className="border border-brand-border rounded-xl p-2.5 bg-white animate-pulse">
+                        <div className="aspect-[16/9] w-full rounded-lg bg-gray-100 mb-2 flex items-center justify-center">
+                          <ImageIcon className="w-5 h-5 text-gray-300" />
+                        </div>
+                        <div className="h-3.5 bg-gray-200 rounded w-3/4 mb-1.5" />
+                        <div className="h-3 bg-gray-100 rounded w-1/2" />
                       </div>
-                      <div className="h-3.5 bg-gray-200 rounded w-3/4 mb-1.5" />
-                      <div className="h-3 bg-gray-100 rounded w-1/2" />
-                    </div>
-                  ))
-                ) : (
-                  displayRightAds.map((ad, idx) => (
-                    <a
-                      key={`right-ad-${ad.id || idx}`}
-                      href={ad.link_url || '#'}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="group block border border-brand-border rounded-xl p-2.5 bg-white hover:border-brand-blue hover:shadow-editorial transition-all"
-                    >
-                      <div className="relative aspect-[16/9] w-full rounded-lg overflow-hidden bg-gray-100 mb-2 border border-brand-border">
-                        <img
-                          src={ad.image_url || undefined}
-                          alt={ad.title}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).src =
-                              'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=600&q=80';
-                          }}
-                        />
-                        <span className="absolute top-1.5 left-1.5 text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded bg-black/70 text-white backdrop-blur-xs">
-                          Ad #{idx + 4}
-                        </span>
-                      </div>
-                      <div className="flex items-start justify-between gap-1">
-                        <h4 className="font-bold text-xs text-brand-charcoal group-hover:text-brand-blue line-clamp-2 leading-snug">
-                          {ad.title}
-                        </h4>
-                        <ExternalLink className="w-3 h-3 text-brand-muted group-hover:text-brand-blue flex-shrink-0 mt-0.5" />
-                      </div>
-                    </a>
-                  ))
-                )}
+                    ))
+                  ) : (
+                    displayRightAds.map((ad, idx) => (
+                      <a
+                        key={`right-ad-${ad.id || idx}`}
+                        href={ad.link_url || '#'}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="group block border border-brand-border rounded-xl p-2.5 bg-white hover:border-brand-blue hover:shadow-editorial transition-all"
+                      >
+                        <div className="relative aspect-[16/9] w-full rounded-lg overflow-hidden bg-gray-100 mb-2 border border-brand-border">
+                          <img
+                            src={ad.image_url || undefined}
+                            alt={ad.title}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src =
+                                'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=600&q=80';
+                            }}
+                          />
+                          <span className="absolute top-1.5 left-1.5 text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded bg-black/70 text-white backdrop-blur-xs">
+                            Ad #{idx + 4}
+                          </span>
+                        </div>
+                        <div className="flex items-start justify-between gap-1">
+                          <h4 className="font-bold text-xs text-brand-charcoal group-hover:text-brand-blue line-clamp-2 leading-snug">
+                            {ad.title}
+                          </h4>
+                          <ExternalLink className="w-3 h-3 text-brand-muted group-hover:text-brand-blue flex-shrink-0 mt-0.5" />
+                        </div>
+                      </a>
+                    ))
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -745,12 +749,12 @@ export const Home: React.FC = () => {
             {/* Sandboxed Newspaper Iframe Display - Expanded Wide Broadsheet */}
             <div
               ref={broadsheetContainerRef}
-              className="w-full bg-white border border-brand-border rounded-2xl shadow-2xl p-2 sm:p-4 overflow-hidden"
+              className="w-full bg-white border border-brand-border rounded-xl sm:rounded-2xl shadow-xl sm:shadow-2xl p-1 sm:p-4 overflow-hidden"
             >
               {editionLoading ? (
-                <div className="py-32 flex flex-col items-center justify-center space-y-4">
+                <div className="py-24 sm:py-32 flex flex-col items-center justify-center space-y-4">
                   <div className="w-12 h-12 border-4 border-brand-blue border-t-brand-green rounded-full animate-spin" />
-                  <div className="text-center">
+                  <div className="text-center px-4">
                     <h4 className="font-headline text-lg font-bold text-brand-charcoal">
                       Checking English Broadsheet Edition
                     </h4>
@@ -767,7 +771,7 @@ export const Home: React.FC = () => {
                     transformOrigin: 'top center',
                   }}
                 >
-                  <div className="w-full min-h-[1100px] bg-white rounded border border-brand-border shadow-xl overflow-hidden">
+                  <div className="w-full bg-white rounded border border-brand-border shadow-md overflow-hidden">
                     {/*
                       CRITICAL REQUIREMENT:
                       Render stored HTML inside sandboxed iframe without allow-scripts to prevent execution.
@@ -776,17 +780,112 @@ export const Home: React.FC = () => {
                       srcDoc={englishEdition.html_content}
                       title={englishEdition.title}
                       sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation"
-                      className="w-full h-[1400px] border-0 bg-white"
+                      className="w-full border-0 bg-white min-h-[900px]"
+                      style={{ width: '100%', minHeight: '900px' }}
                       onLoad={(e) => {
                         try {
                           const doc = e.currentTarget.contentDocument;
                           if (doc) {
-                            // Ensure black index/pages bar is completely hidden and removed
-                            const hideStyle = doc.createElement('style');
-                            hideStyle.innerHTML = '.index, nav.index, nav[aria-label="Pages"], .index .brand { display: none !important; }';
-                            doc.head?.appendChild(hideStyle);
+                            // 1. Inject responsive viewport meta tag
+                            let meta = doc.querySelector('meta[name="viewport"]');
+                            if (!meta) {
+                              meta = doc.createElement('meta');
+                              meta.setAttribute('name', 'viewport');
+                              meta.setAttribute('content', 'width=device-width, initial-scale=1.0');
+                              doc.head?.appendChild(meta);
+                            }
+
+                            // 2. Inject responsive CSS overrides for seamless mobile fit
+                            const respStyle = doc.createElement('style');
+                            respStyle.innerHTML = `
+                              .index, nav.index, nav[aria-label="Pages"], .index .brand, .wrap > a.brand { display: none !important; }
+                              html, body {
+                                width: 100% !important;
+                                max-width: 100vw !important;
+                                margin: 0 !important;
+                                padding: 0 !important;
+                                overflow-x: hidden !important;
+                                -webkit-text-size-adjust: 100%;
+                              }
+                              .wrap {
+                                width: 100% !important;
+                                max-width: 100% !important;
+                                padding-left: 10px !important;
+                                padding-right: 10px !important;
+                                box-sizing: border-box !important;
+                              }
+                              .sheet {
+                                width: 100% !important;
+                                max-width: 100% !important;
+                                margin-left: 0 !important;
+                                margin-right: 0 !important;
+                                box-sizing: border-box !important;
+                                overflow-x: hidden !important;
+                              }
+                              @media (max-width: 768px) {
+                                .mast {
+                                  display: flex !important;
+                                  flex-direction: column !important;
+                                  align-items: center !important;
+                                  text-align: center !important;
+                                  gap: 10px !important;
+                                  padding: 12px 6px !important;
+                                }
+                                .ceos.left, .ceos.right {
+                                  display: flex !important;
+                                  flex-wrap: wrap !important;
+                                  justify-content: center !important;
+                                  gap: 6px !important;
+                                }
+                                .title-block h1 {
+                                  font-size: clamp(26px, 7vw, 42px) !important;
+                                  line-height: 1.1 !important;
+                                }
+                                .lead-grid, .two, .three, .jobs, .figures {
+                                  display: flex !important;
+                                  flex-direction: column !important;
+                                  width: 100% !important;
+                                }
+                                .three.col-rule > *, .col-rule > * {
+                                  border-left: none !important;
+                                  border-top: 1px solid var(--rule, #c9ccd1) !important;
+                                  padding-left: 0 !important;
+                                  padding-top: 12px !important;
+                                }
+                                img {
+                                  max-width: 100% !important;
+                                  height: auto !important;
+                                }
+                                table {
+                                  display: block !important;
+                                  width: 100% !important;
+                                  overflow-x: auto !important;
+                                }
+                              }
+                            `;
+                            doc.head?.appendChild(respStyle);
                             doc.querySelectorAll('nav.index, nav[aria-label="Pages"], .index').forEach((el) => el.remove());
 
+                            // 3. Dynamic height adjustment to avoid nested scrollbars on mobile
+                            const iframeEl = e.currentTarget;
+                            const updateHeight = () => {
+                              try {
+                                if (doc && doc.body) {
+                                  const contentHeight = Math.max(
+                                    doc.body.scrollHeight,
+                                    doc.documentElement.scrollHeight
+                                  );
+                                  if (contentHeight > 400) {
+                                    iframeEl.style.height = `${contentHeight + 30}px`;
+                                  }
+                                }
+                              } catch {}
+                            };
+                            updateHeight();
+                            setTimeout(updateHeight, 400);
+                            setTimeout(updateHeight, 1200);
+
+                            // 4. Ensure all external links open safely in new tabs
                             doc.querySelectorAll('a').forEach((anchor) => {
                               const href = anchor.getAttribute('href');
                               if (href && (href.startsWith('http://') || href.startsWith('https://'))) {

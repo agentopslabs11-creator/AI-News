@@ -13,10 +13,10 @@ export const BreakingNewsTicker: React.FC<TickerProps> = ({ items, onArticleClic
   const displayItems = items.length < 6 ? [...items, ...items, ...items, ...items] : [...items, ...items];
 
   return (
-    <div className="w-full bg-[#fbfbf9] border-y border-brand-border py-1.5 px-4 sm:px-8 overflow-hidden select-none">
-      <div className="w-full flex items-center gap-3 relative">
+    <div className="w-full bg-[#fbfbf9] border-y border-brand-border py-1.5 px-2.5 sm:px-8 overflow-hidden select-none">
+      <div className="w-full flex items-center gap-2 sm:gap-3 relative">
         {/* Fixed LIVE WIRE Badge as featured in the broadsheet HTML */}
-        <div className="flex-shrink-0 z-10 px-3 py-1 bg-[#b3261e] text-white text-[11px] font-black tracking-[0.14em] uppercase shadow-xs flex items-center gap-1.5 rounded-xs select-none">
+        <div className="flex-shrink-0 z-10 px-2 sm:px-3 py-0.5 sm:py-1 bg-[#b3261e] text-white text-[10px] sm:text-[11px] font-black tracking-[0.12em] sm:tracking-[0.14em] uppercase shadow-xs flex items-center gap-1 sm:gap-1.5 rounded-xs select-none">
           <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
           <span>LIVE WIRE</span>
         </div>

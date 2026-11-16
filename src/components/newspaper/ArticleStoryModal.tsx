@@ -135,7 +135,7 @@ export const ArticleStoryModal: React.FC<ArticleStoryModalProps> = ({
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-6 overflow-y-auto">
         {/* Backdrop */}
         <motion.div
           initial={{ opacity: 0 }}
@@ -151,10 +151,10 @@ export const ArticleStoryModal: React.FC<ArticleStoryModalProps> = ({
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 15 }}
           transition={{ duration: 0.2 }}
-          className="relative bg-[#FAFAFA] border-2 border-brand-charcoal rounded-none shadow-2xl max-w-4xl w-full my-8 z-10 overflow-hidden font-serif text-[#1C1C1C] select-text"
+          className="relative bg-[#FAFAFA] border-2 border-brand-charcoal rounded-none shadow-2xl max-w-4xl w-full my-4 sm:my-8 z-10 overflow-hidden font-serif text-[#1C1C1C] select-text"
         >
           {/* Top Action Bar (Close & Open in Paper Button) */}
-          <div className="absolute top-4 right-4 flex items-center gap-2 z-20">
+          <div className="absolute top-2.5 right-2.5 sm:top-4 sm:right-4 flex items-center gap-2 z-20">
             <button
               onClick={handleReadFullInPaper}
               className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded bg-black hover:bg-brand-blue text-white text-xs font-sans font-bold uppercase tracking-wider transition-colors shadow-sm"
@@ -166,7 +166,7 @@ export const ArticleStoryModal: React.FC<ArticleStoryModalProps> = ({
             </button>
             <button
               onClick={onClose}
-              className="p-2 rounded-full text-gray-500 hover:text-black hover:bg-gray-200 transition-colors"
+              className="p-1.5 sm:p-2 rounded-full text-gray-500 hover:text-black hover:bg-gray-200 transition-colors touch-manipulation"
               title="Close Newspaper Cut"
               aria-label="Close"
             >
@@ -175,10 +175,10 @@ export const ArticleStoryModal: React.FC<ArticleStoryModalProps> = ({
           </div>
 
           {/* Newspaper Paper Container */}
-          <div className="p-6 sm:p-10 max-h-[88vh] overflow-y-auto bg-white border border-[#E5E5E5] m-2 shadow-inner">
+          <div className="p-4 sm:p-10 max-h-[88vh] overflow-y-auto bg-white border border-[#E5E5E5] m-1 sm:m-2 shadow-inner">
             {/* 1. SECTION HEADER WITH DOUBLE HORIZONTAL RULE (Just like Image 2) */}
-            <div className="border-b-[3px] border-double border-black pb-1 mb-4 flex items-baseline justify-between pr-24 sm:pr-48">
-              <h2 className="font-headline text-2xl sm:text-4xl font-black text-black tracking-tight uppercase">
+            <div className="border-b-[3px] border-double border-black pb-1 mb-3 sm:mb-4 flex items-baseline justify-between pr-10 sm:pr-48">
+              <h2 className="font-headline text-xl sm:text-4xl font-black text-black tracking-tight uppercase">
                 {sectionTitle}
               </h2>
               <span className="text-[11px] font-sans font-bold uppercase tracking-widest text-[#777777] hidden md:inline">
@@ -188,19 +188,19 @@ export const ArticleStoryModal: React.FC<ArticleStoryModalProps> = ({
 
             {/* 2. KICKER / EYEBROW IN BOLD RED (Just like Image 2) */}
             {kicker && (
-              <p className="text-[11px] sm:text-xs font-black uppercase tracking-wider text-[#b91c1c] mb-1.5 font-sans">
+              <p className="text-[10px] sm:text-xs font-black uppercase tracking-wider text-[#b91c1c] mb-1 sm:mb-1.5 font-sans">
                 {kicker}
               </p>
             )}
 
             {/* 3. MAIN STORY HEADLINE (Just like Image 2) */}
-            <h1 className="font-headline text-2xl sm:text-3xl lg:text-[38px] font-black text-black leading-[1.14] tracking-tight mb-3">
+            <h1 className="font-headline text-xl sm:text-3xl lg:text-[38px] font-black text-black leading-[1.18] sm:leading-[1.14] tracking-tight mb-2 sm:mb-3">
               {currentArticle.title}
             </h1>
 
             {/* 4. SUBDECK / DECK IN ITALICS (Just like Image 2) */}
             {currentArticle.description && (
-              <h3 className="text-base sm:text-lg font-serif italic text-[#444444] leading-relaxed mb-6 font-normal">
+              <h3 className="text-sm sm:text-lg font-serif italic text-[#444444] leading-relaxed mb-4 sm:mb-6 font-normal">
                 {currentArticle.description}
               </h3>
             )}
@@ -270,20 +270,20 @@ export const ArticleStoryModal: React.FC<ArticleStoryModalProps> = ({
             </div>
 
             {/* 7. "READ MORE" REDIRECT CALL TO ACTION TO OFFICIAL NEWSPAPER PAGE */}
-            <div className="mt-8 p-4 sm:p-5 bg-[#F9F9F7] border-2 border-black rounded flex flex-col sm:flex-row items-center justify-between gap-4 select-none shadow-sm">
-              <div className="flex items-center gap-3.5">
-                <div className="w-12 h-12 rounded-full bg-black text-white flex flex-col items-center justify-center font-bold text-xs shrink-0 font-sans shadow-sm">
-                  <span className="text-[9px] uppercase tracking-wider text-gray-300">PAGE</span>
-                  <span className="text-base leading-none font-black">{pageNum}</span>
+            <div className="mt-6 sm:mt-8 p-3 sm:p-5 bg-[#F9F9F7] border-2 border-black rounded flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 select-none shadow-sm">
+              <div className="flex items-center gap-3 sm:gap-3.5 w-full sm:w-auto">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-black text-white flex flex-col items-center justify-center font-bold text-xs shrink-0 font-sans shadow-sm">
+                  <span className="text-[8px] sm:text-[9px] uppercase tracking-wider text-gray-300">PAGE</span>
+                  <span className="text-sm sm:text-base leading-none font-black">{pageNum}</span>
                 </div>
                 <div>
-                  <h4 className="font-headline font-bold text-base text-black flex items-center gap-2">
+                  <h4 className="font-headline font-bold text-sm sm:text-base text-black flex items-center gap-1.5 sm:gap-2 flex-wrap">
                     <span>Read Full News in Newspaper Broadsheet</span>
-                    <span className="text-xs font-sans font-bold text-brand-blue bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                    <span className="text-[10px] sm:text-xs font-sans font-bold text-brand-blue bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
                       Page {pageNum}
                     </span>
                   </h4>
-                  <p className="text-xs text-gray-600 font-sans mt-0.5">
+                  <p className="text-[11px] sm:text-xs text-gray-600 font-sans mt-0.5 leading-snug">
                     Click to jump directly to this article on the actual newspaper page with full columns, diagrams, and surrounding coverage.
                   </p>
                 </div>
@@ -291,7 +291,7 @@ export const ArticleStoryModal: React.FC<ArticleStoryModalProps> = ({
 
               <button
                 onClick={handleReadFullInPaper}
-                className="w-full sm:w-auto px-6 py-3 bg-black hover:bg-brand-blue text-white font-sans font-bold text-xs uppercase tracking-wider rounded transition-colors flex items-center justify-center gap-2 shadow shrink-0 group"
+                className="w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-3 bg-black hover:bg-brand-blue text-white font-sans font-bold text-xs uppercase tracking-wider rounded transition-colors flex items-center justify-center gap-2 shadow shrink-0 group touch-manipulation"
               >
                 <span>Read Full Story</span>
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
