@@ -143,10 +143,7 @@ export const Home: React.FC = () => {
           } catch {}
         }
         if (videoList.status === 'fulfilled' && videoList.value.length > 0) {
-          const rnsVideos = videoList.value.filter((v: VideoItem) =>
-            v.title.toLowerCase().includes('rise')
-          );
-          const finalVideos = rnsVideos.length > 0 ? rnsVideos : videoList.value;
+          const finalVideos = videoList.value;
           setAllVideos(finalVideos);
 
           // Find if there is an editorial video published TODAY

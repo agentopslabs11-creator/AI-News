@@ -12,10 +12,18 @@ import {
   Image as ImageIcon,
   ArrowRight,
   Sparkles,
+  Play,
+  Clock,
+  Tv,
+  Film,
+  UploadCloud,
+  RefreshCw,
+  Calendar,
 } from 'lucide-react';
 import { Modal } from '../components/common/Modal';
 import { newspaperService } from '../services/newspaper';
-import { Advertisement, AdvertisementInput } from '../types';
+import { Advertisement, AdvertisementInput, VideoItem, LanguageCode } from '../types';
+import { isTodayDate, formatPublicationDate } from '../utils/date';
 
 export const ManageAds: React.FC = () => {
   const [ads, setAds] = useState<Advertisement[]>([]);
@@ -24,7 +32,24 @@ export const ManageAds: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  // Modal form states
+  // Video state for Center Section
+  const [allVideos, setAllVideos] = useState<VideoItem[]>([]);
+  const [todaysVideo, setTodaysVideo] = useState<VideoItem | null>(null);
+  const [videosLoading, setVideosLoading] = useState(true);
+
+  // Direct video upload modal state
+  const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
+  const [editingVideo, setEditingVideo] = useState<VideoItem | null>(null);
+  const [videoFormData, setVideoFormData] = useState({
+    title: '',
+    youtube_url: '',
+    description: '',
+    language: 'en' as LanguageCode,
+  });
+  const [savingVideo, setSavingVideo] = useState(false);
+  const [videoError, setVideoError] = useState<string | null>(null);
+
+  // Modal form states for ads
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingAd, setEditingAd] = useState<Advertisement | null>(null);
   const [formData, setFormData] = useState<AdvertisementInput>({
@@ -54,9 +79,86 @@ export const ManageAds: React.FC = () => {
     }
   };
 
+  const fetchVideos = async () => {
+    try {
+      setVideosLoading(true);
+      const data = await newspaperService.getAdminVideos();
+      setAllVideos(data);
+      const today = data.find((v) => isTodayDate(v.published_at || v.created_at));
+      setTodaysVideo(today || null);
+    } catch (err: any) {
+      console.warn('Could not load videos for ads center desk:', err);
+    } finally {
+      setVideosLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchAds();
+    fetchVideos();
   }, [selectedSide]);
+
+  const handleOpenUploadVideo = (existing?: VideoItem | null) => {
+    setVideoError(null);
+    if (existing) {
+      setEditingVideo(existing);
+      setVideoFormData({
+        title: existing.title,
+        youtube_url: existing.youtube_url,
+        description: existing.description || '',
+        language: existing.language || 'en',
+      });
+    } else {
+      setEditingVideo(null);
+      setVideoFormData({
+        title: "Rise 'n' Shine Editorial Briefing: Today's AI Headlines",
+        youtube_url: '',
+        description: "Today's editorial news broadcast and technology briefing.",
+        language: 'en',
+      });
+    }
+    setIsVideoModalOpen(true);
+  };
+
+  const handleSaveVideo = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!videoFormData.title.trim() || !videoFormData.youtube_url.trim()) {
+      setVideoError('Video title and YouTube URL are required.');
+      return;
+    }
+
+    try {
+      setSavingVideo(true);
+      setVideoError(null);
+
+      if (editingVideo) {
+        await newspaperService.updateVideo(editingVideo.id, {
+          title: videoFormData.title.trim(),
+          youtube_url: videoFormData.youtube_url.trim(),
+          description: videoFormData.description.trim() || undefined,
+          language: videoFormData.language,
+          status: 'published',
+        });
+        setSuccess("Today's video broadcast updated successfully! It is active on the homepage today and saved in the Videos session.");
+      } else {
+        await newspaperService.createVideo({
+          title: videoFormData.title.trim(),
+          youtube_url: videoFormData.youtube_url.trim(),
+          description: videoFormData.description.trim() || undefined,
+          language: videoFormData.language,
+          status: 'published',
+        });
+        setSuccess("Today's video published successfully! It is now live in the center section and automatically uploaded to the Videos session.");
+      }
+
+      setIsVideoModalOpen(false);
+      await fetchVideos();
+    } catch (err: any) {
+      setVideoError(err.response?.data?.detail || 'Failed to save video. Please verify the YouTube URL.');
+    } finally {
+      setSavingVideo(false);
+    }
+  };
 
   const handleOpenAdd = (side: 'left' | 'right' = 'left', position: number = 1) => {
     setEditingAd(null);
@@ -333,27 +435,148 @@ export const ManageAds: React.FC = () => {
             })}
           </div>
 
-          {/* Center Column: Video Player Representation */}
-          <div className="lg:col-span-6 border-2 border-dashed border-brand-border rounded-xl p-6 bg-gray-50/60 flex flex-col items-center justify-center text-center min-h-[360px]">
-            <div className="w-16 h-16 rounded-full bg-brand-yellow/30 flex items-center justify-center text-brand-charcoal mb-3">
-              <Megaphone className="w-8 h-8 text-brand-blue" />
+          {/* Center Column: Direct Video Broadcast Desk */}
+          <div className="lg:col-span-6 border-2 border-brand-border rounded-xl p-5 bg-white shadow-subtle flex flex-col justify-between min-h-[380px] space-y-4">
+            {/* Top Status Bar */}
+            <div className="flex items-center justify-between pb-2 border-b border-brand-border">
+              <span className="text-[10px] font-black uppercase tracking-widest text-brand-blue flex items-center gap-1.5">
+                <Play className="w-3.5 h-3.5 fill-brand-blue text-brand-blue" />
+                <span>Center Section • Featured Video Broadcast</span>
+              </span>
+              {videosLoading ? (
+                <span className="text-[9px] font-bold text-brand-muted bg-gray-50 px-2 py-0.5 rounded border border-gray-200">
+                  Checking status...
+                </span>
+              ) : todaysVideo ? (
+                <span className="inline-flex items-center gap-1 text-[9px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <span>Today's Broadcast Live</span>
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 text-[9px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                  <Clock className="w-2.5 h-2.5 text-amber-700" />
+                  <span>Scheduled • 7:00 PM</span>
+                </span>
+              )}
             </div>
-            <span className="text-[11px] font-black uppercase tracking-widest text-brand-blue mb-1">
-              Center Section
-            </span>
-            <h4 className="font-headline text-xl font-black text-brand-charcoal">
-              Featured Video Player Display
-            </h4>
-            <p className="text-xs text-brand-muted max-w-sm mt-1 mb-4 leading-relaxed">
-              The featured YouTube news broadcast is centered here, flanked by 3 left and 3 right advertisements.
-            </p>
-            <a
-              href="/admin/videos"
-              className="text-xs font-bold text-brand-blue hover:underline inline-flex items-center gap-1"
-            >
-              <span>Manage Broadcast Videos</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </a>
+
+            {/* Content: Either Today's Live Video OR Direct Upload Prompt */}
+            {videosLoading ? (
+              <div className="py-12 flex flex-col items-center justify-center space-y-2">
+                <RefreshCw className="w-6 h-6 text-brand-blue animate-spin" />
+                <p className="text-xs text-brand-muted">Checking today's broadcast video...</p>
+              </div>
+            ) : todaysVideo ? (
+              <div className="space-y-3.5">
+                {/* 16:9 Video Preview */}
+                <div className="relative aspect-video rounded-lg overflow-hidden bg-black border border-brand-border shadow-xs">
+                  <iframe
+                    src={`https://www.youtube-nocookie.com/embed/${todaysVideo.youtube_video_id}`}
+                    title={todaysVideo.title}
+                    className="w-full h-full border-0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                </div>
+
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.2 rounded bg-brand-yellow text-brand-charcoal">
+                      Published Today
+                    </span>
+                    <span className="text-[11px] text-brand-muted font-medium">
+                      {formatPublicationDate(todaysVideo.published_at || todaysVideo.created_at)}
+                    </span>
+                  </div>
+                  <h4 className="font-headline text-base font-bold text-brand-charcoal leading-snug line-clamp-2">
+                    {todaysVideo.title}
+                  </h4>
+                  {todaysVideo.description && (
+                    <p className="text-xs text-brand-muted mt-0.5 line-clamp-1">
+                      {todaysVideo.description}
+                    </p>
+                  )}
+                </div>
+
+                {/* Lifecycle Explanation Notice requested by user */}
+                <div className="p-2.5 bg-blue-50/70 border border-blue-200 rounded-lg text-left text-xs text-brand-charcoal space-y-1">
+                  <div className="flex items-center gap-1.5 font-bold text-brand-blue text-[11px]">
+                    <Sparkles className="w-3 h-3 text-brand-yellow" />
+                    <span>Auto-Transition Lifecycle</span>
+                  </div>
+                  <p className="text-[11px] text-brand-muted leading-relaxed">
+                    This video is active on the homepage today and permanently saved in the Videos session. Tomorrow, it will automatically step down from this featured slot to the Previous Videos collection in the Videos session, and the scheduled 7:00 PM notice will display on the homepage until tomorrow's video is uploaded.
+                  </p>
+                </div>
+
+                {/* Direct Action Buttons */}
+                <div className="flex items-center gap-2 pt-1 flex-wrap">
+                  <button
+                    onClick={() => handleOpenUploadVideo(todaysVideo)}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-brand-blue text-white font-bold text-xs uppercase tracking-wider hover:bg-blue-800 transition-colors shadow-xs"
+                  >
+                    <Edit2 className="w-3.5 h-3.5" />
+                    <span>Update Today's Video</span>
+                  </button>
+                  <button
+                    onClick={() => handleOpenUploadVideo(null)}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border border-brand-border bg-gray-50 text-brand-charcoal font-bold text-xs uppercase tracking-wider hover:bg-gray-100 transition-colors"
+                  >
+                    <Plus className="w-3.5 h-3.5 text-brand-blue" />
+                    <span>Upload New Video</span>
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="py-6 flex flex-col items-center justify-center text-center space-y-3 bg-gradient-to-b from-gray-50/80 to-white rounded-lg p-4 border border-brand-border">
+                <div className="relative">
+                  <div className="w-14 h-14 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center shadow-xs">
+                    <Tv className="w-7 h-7 text-brand-blue" />
+                  </div>
+                  <span className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-brand-yellow border-2 border-white flex items-center justify-center">
+                    <Clock className="w-2.5 h-2.5 text-brand-charcoal" />
+                  </span>
+                </div>
+
+                <div>
+                  <h4 className="font-headline text-lg font-black text-brand-charcoal">
+                    Today's Video Not Yet Uploaded
+                  </h4>
+                  <p className="text-xs text-brand-muted max-w-sm mt-1 leading-relaxed">
+                    The homepage is currently displaying: <strong className="text-brand-charcoal">"Our team is working on latest updates, video will upload at 7:00 PM."</strong>
+                  </p>
+                </div>
+
+                {/* Direct Upload CTA Button */}
+                <button
+                  onClick={() => handleOpenUploadVideo(null)}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-brand-blue text-white font-bold text-xs uppercase tracking-wider hover:bg-blue-800 transition-colors shadow-sm"
+                >
+                  <UploadCloud className="w-4 h-4 text-brand-green" />
+                  <span>Direct Upload Today's Video Broadcast</span>
+                </button>
+
+                <p className="text-[10px] text-brand-muted max-w-xs">
+                  Uploading here instantly activates the video for today's homepage slot and auto-saves it permanently to the Videos session.
+                </p>
+              </div>
+            )}
+
+            {/* Bottom Session Links */}
+            <div className="pt-2 border-t border-brand-border flex items-center justify-between text-xs text-brand-muted">
+              <span className="text-[11px] font-semibold">
+                {allVideos.length} archived {allVideos.length === 1 ? 'video' : 'videos'} in Videos session
+              </span>
+              <a
+                href="/videos"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[11px] font-bold text-brand-blue hover:underline inline-flex items-center gap-1"
+              >
+                <span>Preview Videos Page</span>
+                <ExternalLink className="w-3 h-3" />
+              </a>
+            </div>
           </div>
 
           {/* Right Column Preview (3 slots) */}
@@ -713,6 +936,124 @@ export const ManageAds: React.FC = () => {
             </button>
           </div>
         </div>
+      </Modal>
+
+      {/* Direct Video Upload / Update Modal */}
+      <Modal
+        isOpen={isVideoModalOpen}
+        onClose={() => setIsVideoModalOpen(false)}
+        title={editingVideo ? "Update Today's Video Broadcast" : "Direct Upload Today's Video Broadcast"}
+        maxWidth="lg"
+      >
+        <form onSubmit={handleSaveVideo} className="space-y-4">
+          {videoError && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2 text-xs text-red-700">
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+              <span>{videoError}</span>
+            </div>
+          )}
+
+          <div>
+            <label className="block text-xs font-bold text-brand-charcoal uppercase mb-1">
+              YouTube Video Link / URL *
+            </label>
+            <input
+              type="text"
+              value={videoFormData.youtube_url}
+              onChange={(e) => setVideoFormData({ ...videoFormData, youtube_url: e.target.value })}
+              placeholder="e.g. https://www.youtube.com/watch?v=J0bg5eTWCpc or https://youtu.be/J0bg5eTWCpc"
+              className="w-full px-3 py-2 text-xs border border-brand-border rounded-lg outline-none focus:border-brand-blue"
+              required
+            />
+            <p className="text-[10px] text-brand-muted mt-1">
+              Supports standard YouTube watch links (youtube.com/watch?v=...), youtu.be shortlinks, or embed links.
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-brand-charcoal uppercase mb-1">
+              Video Headline / Title *
+            </label>
+            <input
+              type="text"
+              value={videoFormData.title}
+              onChange={(e) => setVideoFormData({ ...videoFormData, title: e.target.value })}
+              placeholder="e.g. Rise ’n’ Shine Editorial Briefing: Today's AI Headlines"
+              className="w-full px-3 py-2 text-xs border border-brand-border rounded-lg outline-none focus:border-brand-blue"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-brand-charcoal uppercase mb-1">
+              Brief Editorial Description (Optional)
+            </label>
+            <textarea
+              rows={2}
+              value={videoFormData.description}
+              onChange={(e) => setVideoFormData({ ...videoFormData, description: e.target.value })}
+              placeholder="Summary of today's visual broadcast..."
+              className="w-full px-3 py-2 text-xs border border-brand-border rounded-lg outline-none focus:border-brand-blue"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-brand-charcoal uppercase mb-1">
+                Edition Language *
+              </label>
+              <select
+                value={videoFormData.language}
+                onChange={(e) =>
+                  setVideoFormData({ ...videoFormData, language: e.target.value as LanguageCode })
+                }
+                className="w-full px-3 py-2 text-xs border border-brand-border rounded-lg outline-none focus:border-brand-blue"
+              >
+                <option value="en">English Edition</option>
+                <option value="te">తెలుగు (Telugu)</option>
+                <option value="hi">हिंदी (Hindi)</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Lifecycle Information Pill */}
+          <div className="p-3 bg-blue-50/80 border border-blue-200 rounded-lg text-xs space-y-1">
+            <div className="flex items-center gap-1.5 font-bold text-brand-blue text-[11px]">
+              <Sparkles className="w-3.5 h-3.5 text-brand-yellow" />
+              <span>How today's video works automatically</span>
+            </div>
+            <p className="text-[11px] text-brand-charcoal leading-relaxed">
+              When uploaded, this video becomes active as <strong>Today's Broadcast</strong> in the homepage center section and is permanently saved in the <strong>Videos session</strong>. Tomorrow, this video will automatically step down from this featured slot to the Videos archive, and the scheduled 7:00 PM notice will display on the homepage until tomorrow's video is uploaded.
+            </p>
+          </div>
+
+          <div className="flex items-center justify-end gap-3 pt-3 border-t border-brand-border">
+            <button
+              type="button"
+              onClick={() => setIsVideoModalOpen(false)}
+              className="px-4 py-2 rounded-lg border border-brand-border text-xs font-bold text-brand-charcoal hover:bg-gray-100"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={savingVideo}
+              className="px-5 py-2 rounded-lg bg-brand-blue text-white text-xs font-bold hover:bg-blue-800 disabled:opacity-50 inline-flex items-center gap-1.5"
+            >
+              {savingVideo ? (
+                <>
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  <span>Publishing Video...</span>
+                </>
+              ) : (
+                <>
+                  <UploadCloud className="w-3.5 h-3.5" />
+                  <span>{editingVideo ? 'Update Video' : 'Publish Video for Today'}</span>
+                </>
+              )}
+            </button>
+          </div>
+        </form>
       </Modal>
     </div>
   );

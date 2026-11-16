@@ -19,10 +19,9 @@ export const Videos: React.FC = () => {
     async function loadVideos() {
       try {
         setLoading(true);
-        // Exclusively fetch English editorial videos from Rise 'n' Shine
-        const data = await newspaperService.getVideos('en', 30);
-        const rnsOnly = data.filter((v: VideoItem) => v.title.toLowerCase().includes('rise'));
-        setVideos(rnsOnly.length > 0 ? rnsOnly : data);
+        // Exclusively fetch editorial videos
+        const data = await newspaperService.getVideos('en', 50);
+        setVideos(data);
       } catch (err) {
         console.error('Failed to load videos:', err);
       } finally {
