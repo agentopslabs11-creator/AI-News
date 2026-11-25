@@ -221,7 +221,7 @@ export const Home: React.FC = () => {
     broadsheetSectionRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  // Helper fallback advertisements if admin hasn't filled all 3 slots
+  // Helper fallback advertisements if admin hasn't filled all 2 slots
   const fallbackLeftAds = [
     {
       id: 101,
@@ -240,16 +240,6 @@ export const Home: React.FC = () => {
       link_url: 'https://example.com/clean-energy',
       side: 'left' as const,
       position: 2,
-      is_active: true,
-      created_at: new Date().toISOString(),
-    },
-    {
-      id: 103,
-      title: 'Autonomous Agricultural Sensor Suite',
-      image_url: 'https://images.unsplash.com/photo-1586771107445-d3ca888129ff?auto=format&fit=crop&w=600&q=80',
-      link_url: 'https://example.com/smart-agri',
-      side: 'left' as const,
-      position: 3,
       is_active: true,
       created_at: new Date().toISOString(),
     },
@@ -276,24 +266,14 @@ export const Home: React.FC = () => {
       is_active: true,
       created_at: new Date().toISOString(),
     },
-    {
-      id: 106,
-      title: 'Deep-Space Laser Communications Satellite Network',
-      image_url: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=600&q=80',
-      link_url: 'https://example.com/satellite',
-      side: 'right' as const,
-      position: 3,
-      is_active: true,
-      created_at: new Date().toISOString(),
-    },
   ];
 
-  // Merge admin ads with fallbacks ensuring exactly 3 left and 3 right ads
-  const displayLeftAds = [1, 2, 3].map((pos) => {
+  // Merge admin ads with fallbacks ensuring exactly 2 left and 2 right ads (4 total)
+  const displayLeftAds = [1, 2].map((pos) => {
     return leftAds.find((a) => a.position === pos) || fallbackLeftAds[pos - 1];
   });
 
-  const displayRightAds = [1, 2, 3].map((pos) => {
+  const displayRightAds = [1, 2].map((pos) => {
     return rightAds.find((a) => a.position === pos) || fallbackRightAds[pos - 1];
   });
 
@@ -516,7 +496,7 @@ export const Home: React.FC = () => {
                 </div>
               </div>
 
-              {/* LEFT SIDE: 3 Advertisements (Order-2 on mobile, Order-1 on desktop) */}
+              {/* LEFT SIDE: 2 Advertisements (Order-2 on mobile, Order-1 on desktop) */}
               <div className="order-2 lg:order-1 lg:col-span-3">
                 <div className="flex items-center justify-between pb-1 border-b border-brand-border mb-3">
                   <span className="text-[10px] font-black uppercase tracking-widest text-brand-muted flex items-center gap-1">
@@ -528,9 +508,9 @@ export const Home: React.FC = () => {
                   </span>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-1 gap-3 sm:gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-3 sm:gap-4">
                   {loading && leftAds.length === 0 ? (
-                    [1, 2, 3].map((i) => (
+                    [1, 2].map((i) => (
                       <div key={`skel-left-${i}`} className="border border-brand-border rounded-xl p-2.5 bg-white animate-pulse">
                         <div className="aspect-[16/9] w-full rounded-lg bg-gray-100 mb-2 flex items-center justify-center">
                           <ImageIcon className="w-5 h-5 text-gray-300" />
@@ -574,7 +554,7 @@ export const Home: React.FC = () => {
                 </div>
               </div>
 
-              {/* RIGHT SIDE: 3 Advertisements (Order-3 on mobile and desktop) */}
+              {/* RIGHT SIDE: 2 Advertisements (Order-3 on mobile and desktop) */}
               <div className="order-3 lg:order-3 lg:col-span-3">
                 <div className="flex items-center justify-between pb-1 border-b border-brand-border mb-3">
                   <span className="text-[10px] font-black uppercase tracking-widest text-brand-muted flex items-center gap-1">
@@ -586,9 +566,9 @@ export const Home: React.FC = () => {
                   </span>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-1 gap-3 sm:gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-3 sm:gap-4">
                   {loading && rightAds.length === 0 ? (
-                    [1, 2, 3].map((i) => (
+                    [1, 2].map((i) => (
                       <div key={`skel-right-${i}`} className="border border-brand-border rounded-xl p-2.5 bg-white animate-pulse">
                         <div className="aspect-[16/9] w-full rounded-lg bg-gray-100 mb-2 flex items-center justify-center">
                           <ImageIcon className="w-5 h-5 text-gray-300" />
@@ -617,7 +597,7 @@ export const Home: React.FC = () => {
                             }}
                           />
                           <span className="absolute top-1.5 left-1.5 text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded bg-black/70 text-white backdrop-blur-xs">
-                            Ad #{idx + 4}
+                            Ad #{idx + 3}
                           </span>
                         </div>
                         <div className="flex items-start justify-between gap-1">

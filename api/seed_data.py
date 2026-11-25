@@ -946,15 +946,7 @@ def seed_database():
                 "position": 2,
                 "is_active": True
             },
-            {
-                "title": "Autonomous Agricultural Sensor Suite",
-                "image_url": "https://images.unsplash.com/photo-1586771107445-d3ca888129ff?auto=format&fit=crop&w=600&q=80",
-                "link_url": "https://example.com/smart-agri",
-                "side": "left",
-                "position": 3,
-                "is_active": True
-            },
-            # Right 3 Ads
+            # Right 2 Ads
             {
                 "title": "Global Semiconductor Lithography Expo",
                 "image_url": "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=600&q=80",
@@ -970,14 +962,6 @@ def seed_database():
                 "side": "right",
                 "position": 2,
                 "is_active": True
-            },
-            {
-                "title": "Deep-Space Communications Satellite Network",
-                "image_url": "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=600&q=80",
-                "link_url": "https://example.com/satellite",
-                "side": "right",
-                "position": 3,
-                "is_active": True
             }
         ]
 
@@ -991,7 +975,7 @@ def seed_database():
                 db.add(new_ad)
                 db.commit()
 
-        print(f"[OK] Verified 3 left and 3 right sidebar advertisements.")
+        print(f"[OK] Verified 2 left and 2 right sidebar advertisements (4 total).")
 
         # Seed initial audit log
         log_entry = AdminActivityLog(

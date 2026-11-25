@@ -343,23 +343,23 @@ export const ManageAds: React.FC = () => {
             </h3>
           </div>
           <span className="text-[11px] text-brand-muted">
-            3 Left Ads • Center Video Player • 3 Right Ads
+            2 Left Ads • Center Video Player • 2 Right Ads (4 Total)
           </span>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
-          {/* Left Column Preview (3 slots) */}
+          {/* Left Column Preview (2 slots) */}
           <div className="lg:col-span-3 space-y-3">
             <div className="text-[11px] font-black uppercase tracking-wider text-brand-blue flex items-center justify-between">
-              <span>Left Ads (Slots 1, 2, 3)</span>
+              <span>Left Ads (Slots 1, 2)</span>
               <button
-                onClick={() => handleOpenAdd('left', leftAds.length + 1)}
+                onClick={() => handleOpenAdd('left', Math.min(leftAds.length + 1, 2))}
                 className="text-[10px] underline hover:text-brand-charcoal"
               >
                 + Add Left
               </button>
             </div>
-            {[1, 2, 3].map((pos) => {
+            {[1, 2].map((pos) => {
               const ad = leftAds.find((a) => a.position === pos);
               return ad ? (
                 <div
@@ -579,18 +579,18 @@ export const ManageAds: React.FC = () => {
             </div>
           </div>
 
-          {/* Right Column Preview (3 slots) */}
+          {/* Right Column Preview (2 slots) */}
           <div className="lg:col-span-3 space-y-3">
             <div className="text-[11px] font-black uppercase tracking-wider text-brand-blue flex items-center justify-between">
-              <span>Right Ads (Slots 1, 2, 3)</span>
+              <span>Right Ads (Slots 1, 2)</span>
               <button
-                onClick={() => handleOpenAdd('right', rightAds.length + 1)}
+                onClick={() => handleOpenAdd('right', Math.min(rightAds.length + 1, 2))}
                 className="text-[10px] underline hover:text-brand-charcoal"
               >
                 + Add Right
               </button>
             </div>
-            {[1, 2, 3].map((pos) => {
+            {[1, 2].map((pos) => {
               const ad = rightAds.find((a) => a.position === pos);
               return ad ? (
                 <div
@@ -806,7 +806,7 @@ export const ManageAds: React.FC = () => {
 
             <div>
               <label className="block text-xs font-bold text-brand-charcoal uppercase mb-1">
-                Position Slot (1, 2, or 3) *
+                Position Slot (1 or 2) *
               </label>
               <select
                 value={formData.position}
@@ -816,8 +816,7 @@ export const ManageAds: React.FC = () => {
                 className="w-full px-3 py-2 text-xs border border-brand-border rounded-lg outline-none focus:border-brand-blue"
               >
                 <option value={1}>Slot 1 (Top)</option>
-                <option value={2}>Slot 2 (Middle)</option>
-                <option value={3}>Slot 3 (Bottom)</option>
+                <option value={2}>Slot 2 (Bottom)</option>
               </select>
             </div>
           </div>
